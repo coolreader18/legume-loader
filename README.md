@@ -29,7 +29,7 @@ $("#mydiv").text("Now I can use jQuery!");
 I dunno, why are you bean so mean?
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 * This is based off of, both in concept and in a fair amount of code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
