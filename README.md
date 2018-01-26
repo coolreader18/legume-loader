@@ -5,7 +5,7 @@ index.html:
 ```html
 <html>
 <head>
-  <script src=path/to/legume.min.js></script>
+  <script src=https://cdn.rawgit.com/coolreader18/legume-loader/vPut-In-Latest-Version/legume.min.js></script>
   <script>Legume.load("script.js")</script>
 </head>
 <body>
