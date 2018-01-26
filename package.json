@@ -1,0 +1,10 @@
+{
+  "name": "legume-loader",
+  "version": "0.1.1",
+  "author": "coolreader18",
+  "repository": "github:coolreader18/legume-loader",
+  "jsdelivr": "legume.min.js",
+  "description": "🥜 A simple vanilla JS dependency manager.",
+  "bugs": "https://github.com/coolreader18/legume-loader/issues",
+  "license": "MIT"
+}
