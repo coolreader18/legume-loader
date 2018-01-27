@@ -85,8 +85,8 @@
         input.forEach(load)
       }
     },
-    async process(data, providedmd) {
-      var parsed = parse(data, providedmd),
+    async process(...args) {
+      var parsed = parse(...args),
       meta = parsed.metadata,
       code = parsed.code,
       waitScript = (async () => {
@@ -107,7 +107,6 @@
         parsed[cur] = parsed.metadata[cur];
         delete parsed.metadata[cur];
       })
-      Object.assign(parsed.metadata, providedmd);
       parsed.var = parsed.var || [];
       parsed.var = parsed.var.reduce((obj, cur) => {
         var split = cur.split(" ")
@@ -180,7 +179,7 @@
   };
   window.Legume = legume;
   if (entry) legume.load(entry);
-  function parse(data, providedmd) {
+  function parse(data, pmd) { // pmd == provided metadata
     var inBlock = false,
     cmt = {
       cmt: /^(\s*\/\/\s*)/,
@@ -258,7 +257,7 @@
       }
     });
     return {
-      metadata: Object.assign(options, providedmd),
+      metadata: Object.assign(options, pmd),
       code: code.join("\n"),
       errors: errors.length ? errors : null,
       legumescript
