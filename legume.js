@@ -1,6 +1,17 @@
 (() => {
+  var entry = document.currentScript.dataset.legumeEntry;
   function load(inurl, msg) {
-    var url;
+    inurl = (()=>{
+      let methods = ['github', 'npm'];
+      for (let i = 0; i < methods.length; i++) {
+        let cur = methods[i];
+        if (inurl.startsWith(`${cur}:`)) {
+          return `https://cdn.jsdelivr.net/${cur=="github"?"gh":cur}/${inurl.replace(new RegExp(`${cur}:`), "").trim()}`;
+        }
+      }
+      return inurl;
+    })().trim();
+    let url;
     try {
       url = new URL(inurl)
     } catch (err) {
@@ -48,35 +59,30 @@
       }
     },
     load(input, opts) {
-      const legumestring = str => {
-        str = str.trim()
-        if (str.startsWith("github:")) {
-          return legume.github(str.replace(/github:/, ""));
-        } else if (str.startsWith("json:")) {
-          return legume.json(str.replace(/json:/, ""));
-        } else if (str.startsWith("text:")) {
-          return legume.text(str.replace(/text:/, ""));
-        } else {
-          return legume.script(str);
+      input = input.trim();
+      if (typeof input == "string") {
+        let types = ['json', 'text'];
+        for (let i = 0; i < types.length; i++) {
+          let cur = types[i];
+          if (input.startsWith(`${cur}:`)) {
+            return legume[cur](input.replace(new RegExp(`${cur}:`), "").trim());
+          }
         }
       }
       if (typeof opts == "string") {
-        if (opts == "github") {
-          return legume.github(input);
-        } else if (opts == "script") {
-          return legume.script(input);
-        } else if (opts == "json") {
-          return legume.json(input);
-        } else if (opts == "text") {
-          return legume.text(input);
-        } else if (opts == "txtscript") {
-          return legume.process(input);
+        switch (opts) {
+          case "github": return legume.github(input);
+          case "script": return legume.script(input);
+          case "json": return legume.json(input);
+          case "text": return legume.text(input);
+          case "txtscript": return legume.process(input);
+          case "npm": return legume.npm(input);
         }
       }
       if (typeof input == "string") {
-        legumestring(input)
-      } else if (typeof Array.isArray(input)) {
-        input.forEach(legumestring)
+        return load(input)
+      } else if (Array.isArray(input)) {
+        input.forEach(load)
       }
     },
     async process(data, providedmd) {
@@ -160,24 +166,20 @@
       }
     },
     github(ghurl) {
-      var filearr = ghurl.split("/"),
-      slug = filearr.slice(0, 2).join("/");
-      return fetch(`https://api.github.com/repos/${slug}/releases/latest`).then(response => {
-        if (response.ok) {
-          return response.json().then(json => `https://cdn.rawgit.com/${slug}/${json.tag_name}/${filearr.slice(2).join("/")}`);
-        } else {
-          throw new Error("Couldn't connect to GitHub");
-        }
-      }).then(load).catch(alert);
+      return legume.script(`https://cdn.jsdelivr.net/gh/${ghurl}`);
     },
     json(jsonurl) {
       return load(jsonurl, "Couldn't load JSON.").then(r=>r.json())
     },
     text(txturl) {
       return load(txturl, "Couldn't load text.").then(r=>r.text())
+    },
+    npm(pkgstr) {
+      return load(`https://cdn.jsdelivr.net/npm/${pkgstr}`, "Couldn't load npm script.").then(r=>r.text()).then(legume.process)
     }
   };
   window.Legume = legume;
+  if (entry) legume.load(entry);
   function parse(data, providedmd) {
     var inBlock = false,
     cmt = {
