@@ -5,8 +5,9 @@ index.html:
 ```html
 <html>
 <head>
-  <script src=https://cdn.jsdelivr.net/gh/coolreader18/legume-loader@latest/legume.min.js></script>
-  <script>Legume.load("script.js")</script>
+  <script
+  src=https://cdn.jsdelivr.net/gh/coolreader18/legume-loader@latest/legume.min.js
+  data-legume-entry=script.js></script>
 </head>
 <body>
   <div id=mydiv>
