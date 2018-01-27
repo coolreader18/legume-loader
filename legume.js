@@ -60,14 +60,15 @@
     },
     load(input, opts) {
       input = input.trim();
-      if (typeof input == "string") {
-        let types = ['json', 'text'];
+      function legumestring(str) {
+        let types = ['json', 'text', 'script'];
         for (let i = 0; i < types.length; i++) {
           let cur = types[i];
-          if (input.startsWith(`${cur}:`)) {
+          if (str.startsWith(`${cur}:`)) {
             return legume[cur](input.replace(new RegExp(`${cur}:`), "").trim());
           }
         }
+        return legume.script(input)
       }
       if (typeof opts == "string") {
         switch (opts) {
@@ -80,9 +81,11 @@
         }
       }
       if (typeof input == "string") {
-        return load(input)
+        return legumestring(input)
       } else if (Array.isArray(input)) {
-        input.forEach(load)
+        let retarr = [];
+        input.forEach(cur => retarr.push(legumestring(cur)))
+        return Promise.resolve(letarr);
       }
     },
     async process(...args) {
