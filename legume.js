@@ -67,10 +67,10 @@
         for (let i = 0; i < types.length; i++) {
           let cur = types[i];
           if (str.startsWith(`${cur}:`)) {
-            return legume[cur](input.replace(new RegExp(`${cur}:`), "").trim());
+            return legume[cur](str.replace(new RegExp(`${cur}:`), "").trim());
           }
         }
-        return legume.script(input)
+        return legume.script(str)
       }
       if (typeof opts == "string") {
         switch (opts) {
@@ -87,7 +87,7 @@
       } else if (Array.isArray(input)) {
         let retarr = [];
         input.forEach(cur => retarr.push(legumestring(cur)))
-        return Promise.resolve(letarr);
+        return Promise.all(retarr);
       }
     },
     async process(...args) {
