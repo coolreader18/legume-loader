@@ -59,7 +59,9 @@
       }
     },
     load(input, opts) {
-      input = input.trim();
+      if (typeof input == "string") {
+        input = input.trim();
+      }
       function legumestring(str) {
         let types = ['json', 'text', 'script'];
         for (let i = 0; i < types.length; i++) {
