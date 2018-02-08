@@ -142,7 +142,7 @@
           legume.scripts[meta.name] || parsed);
         namespace.clicks = namespace.clicks + 1 || 0;
         await new (parsed.async
-          ? Object.getProtoypeOf(async () => {}).constructor
+          ? Object.getPrototypeOf(async () => {}).constructor
           : Function)(...Object.values(parsed.var), code).apply(
           namespace,
           Object.keys(parsed.var).map(cur => vars[cur])
