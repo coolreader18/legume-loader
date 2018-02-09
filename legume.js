@@ -1,18 +1,19 @@
 (() => {
   var entry = document.currentScript.dataset.legumeEntry;
-  function load(inurl, msg) {
-    inurl = (() => {
-      let methods = ["github", "npm"];
-      for (let i = 0; i < methods.length; i++) {
-        let cur = methods[i];
-        if (inurl.startsWith(`${cur}:`)) {
-          return `https://cdn.jsdelivr.net/${
-            cur == "github" ? "gh" : cur
-          }/${inurl.replace(new RegExp(`${cur}:`), "").trim()}`;
-        }
+  function processurl(inurl) {
+    let methods = ["github", "npm"];
+    for (let i = 0; i < methods.length; i++) {
+      let cur = methods[i];
+      if (inurl.startsWith(`${cur}:`)) {
+        return `https://cdn.jsdelivr.net/${
+          cur == "github" ? "gh" : cur
+        }/${inurl.replace(new RegExp(`${cur}:`), "").trim()}`;
       }
-      return inurl;
-    })().trim();
+    }
+    return inurl.trim();
+  }
+  function load(inurl, msg) {
+    inurl = processurl(inurl);
     let url;
     try {
       url = new URL(inurl);
@@ -171,6 +172,7 @@
       }
     },
     style(stlurl) {
+      stlurl = processurl(stlurl);
       const done = fnlurl => {
         l.href = fnlurl;
         document.head.append(l);
