@@ -1,5 +1,9 @@
 (() => {
   var entry = document.currentScript.dataset.legumeEntry;
+  var AsyncFunction;
+  try {
+    AsyncFunction = Object.getPrototypeOf(eval("async () => {}")).constructor;
+  } catch (err) {}
   function processurl(inurl) {
     let methods = ["github", "npm"];
     for (let i = 0; i < methods.length; i++) {
@@ -101,60 +105,86 @@
         return Promise.all(retarr);
       }
     },
-    async process(...args) {
-      var parsed = parse(...args),
-        meta = parsed.metadata,
-        code = parsed.code,
-        waitScript = (async () => {
-          if (!meta.script) {
-            return;
-          } else {
-            let scripts = meta.script;
-            for (var i = 0; i < scripts.length; i++) {
-              await legume.script(scripts[i]);
+    process(...args) {
+      return Promise.resolve().then(() => {
+        var parsed = parse(...args),
+          meta = parsed.metadata,
+          code = parsed.code,
+          waitScript = new Promise(resolve => {
+            if (!meta.script) {
+              resolve();
+            } else {
+              let scripts = meta.script;
+              loop(0);
+              function loop(i) {
+                return legume.script(scripts[i]).then(() => {
+                  if (scripts.length != i + 1) {
+                    loop(i + 1);
+                  } else {
+                    resolve();
+                  }
+                });
+              }
             }
-            return;
+          });
+        if (meta.style) {
+          meta.style.forEach(legume.style);
+        }
+        ["var", "async"].forEach(cur => {
+          parsed[cur] = parsed.metadata[cur];
+          delete parsed.metadata[cur];
+        });
+        parsed.var = parsed.var || [];
+        parsed.var = parsed.var.reduce((obj, cur) => {
+          var split = cur.split(" ");
+          obj[split[0]] = split[1] || split[0];
+          return obj;
+        }, {});
+        var module = {
+            exports: {}
+          },
+          exports = module.exports,
+          vars = {
+            module,
+            exports
+          };
+        return waitScript.then(() => {
+          var ret;
+          if (parsed.legumescript && parsed.metadata.name) {
+            let namespace = (legume.scripts[meta.name] =
+              legume.scripts[meta.name] || parsed);
+            namespace.clicks = namespace.clicks + 1 || 0;
+            ret = Promise.resolve().then(() =>
+              new ((() => {
+                if (parsed.async) {
+                  if (AsyncFunction) {
+                    return AsyncFunction;
+                  } else {
+                    throw new Error(
+                      "Async Functions not supported in this browser"
+                    );
+                  }
+                } else {
+                  return Function;
+                }
+              })())(...Object.values(parsed.var), code).apply(
+                namespace,
+                Object.keys(parsed.var).map(cur => vars[cur])
+              )
+            );
+          } else {
+            eval.call(null, code);
+            ret = Promise.resolve();
           }
-        })();
-      if (meta.style) {
-        meta.style.forEach(legume.style);
-      }
-      ["var", "async"].forEach(cur => {
-        parsed[cur] = parsed.metadata[cur];
-        delete parsed.metadata[cur];
+          return ret.then(
+            () =>
+              !Object.getOwnPropertyNames(module.exports).length &&
+              !Object.getOwnPropertySymbols(module.exports).length
+                ? undefined
+                : module.exports
+          );
+        });
       });
-      parsed.var = parsed.var || [];
-      parsed.var = parsed.var.reduce((obj, cur) => {
-        var split = cur.split(" ");
-        obj[split[0]] = split[1] || split[0];
-        return obj;
-      }, {});
-      var module = {
-          exports: {}
-        },
-        exports = module.exports,
-        vars = {
-          module,
-          exports
-        };
-      await waitScript;
-      if (parsed.legumescript && parsed.metadata.name) {
-        let namespace = (legume.scripts[meta.name] =
-          legume.scripts[meta.name] || parsed);
-        namespace.clicks = namespace.clicks + 1 || 0;
-        await new (parsed.async
-          ? Object.getPrototypeOf(async () => {}).constructor
-          : Function)(...Object.values(parsed.var), code).apply(
-          namespace,
-          Object.keys(parsed.var).map(cur => vars[cur])
-        );
-      } else {
-        eval.call(null, code);
-      }
-      return !Object.getOwnPropertyNames(module.exports).length &&
-        !Object.getOwnPropertySymbols(module.exports).length
-        ? undefined
-        : module.exports;
     },
     script(scrurl) {
       const done = fnlurl =>
@@ -163,10 +193,14 @@
           .then(legume.process);
       if (scrurl.startsWith("dir:")) {
         scrurl = scrurl.replace(/dir:/, "").trim();
-        return (async () =>
-          legume.dir.scripts.unloaded
-            ? await legume.dir.scripts.update()
-            : legume.dir.scripts)().then(dir => done(dir.get(scrurl)));
+        return Promise.resolve()
+          .then(
+            () =>
+              legume.dir.scripts.unloaded
+                ? legume.dir.scripts.update()
+                : legume.dir.scripts
+          )
+          .then(dir => done(dir.get(scrurl)));
       } else {
         return done(scrurl);
       }
@@ -181,10 +215,14 @@
       l.rel = "stylesheet";
       if (stlurl.startsWith("dir:")) {
         stlurl = stlurl.replace(/dir:/, "").trim();
-        return (async () =>
-          legume.dir.styles.unloaded
-            ? await legume.dir.styles.update()
-            : legume.dir.styles)().then(dir => done(dir.get(stlurl)));
+        return Promise.resolve()
+          .then(
+            () =>
+              legume.dir.styles.unloaded
+                ? legume.dir.styles.update()
+                : legume.dir.styles
+          )
+          .then(dir => done(dir.get(stlurl)));
       } else {
         return done(stlurl);
       }
