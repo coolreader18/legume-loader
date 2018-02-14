@@ -161,7 +161,7 @@ legumeload = function() {
               legume.scripts[meta.name] || parsed);
             namespace.clicks = namespace.clicks + 1 || 0;
             ret = Promise.resolve().then(function() {
-              new (Function.prototype.bind.apply(
+              var func = new (Function.prototype.bind.apply(
                 (function() {
                   if (parsed.async) {
                     if (AsyncFunction) {
@@ -176,12 +176,17 @@ legumeload = function() {
                   }
                 })(),
                 [null].concat(Object.values(parsed.var).concat([code]))
-              ))().apply(
-                namespace,
-                Object.keys(parsed.var).map(function(cur) {
-                  return vars[cur];
-                })
-              );
+              ))();
+              var s = document.createElement("script");
+              s.text = "(" + func.toString() + ").apply(Legume.curnsp, Legume.curargs);"
+              Legume.curnsp = namespace;
+              Legume.curargs = Object.keys(parsed.var).map(function(cur) {
+                return vars[cur];
+              });
+              document.body.append(s);
+              s.remove();
+              delete Legume.curnsp;
+              delete Legume.curargs;
             });
           } else {
             eval.call(null, code);
