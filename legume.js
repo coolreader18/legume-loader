@@ -7,20 +7,20 @@ legumeload = function() {
   } catch (err) {}
   function processurl(inurl) {
     inurl = new URL(inurl);
-    let methods = ["github", "npm"];
-    for (let i = 0; i < methods.length; i++) {
-      let cur = methods[i];
+    var methods = ["github", "npm"];
+    for (var i = 0; i < methods.length; i++) {
+      var cur = methods[i];
       if (inurl.protocol == `${cur}:`) {
-        return `https://cdn.jsdelivr.net/${
-          cur == "github" ? "gh" : cur
-        }/${inurl.replace(new RegExp(`${cur}:`), "").trim()}`;
+        return `https://cdn.jsdelivr.net/${cur == "github" ? "gh" : cur}/${
+          inurl.pathname
+        }`;
       }
     }
-    return inurl.trim();
+    return inurl.href;
   }
   function load(inurl, msg) {
     inurl = processurl(inurl);
-    let url;
+    var url;
     try {
       url = new URL(inurl);
     } catch (err) {
@@ -76,9 +76,9 @@ legumeload = function() {
         input = input.trim();
       }
       function legumestring(str) {
-        let types = ["json", "text", "script"];
-        for (let i = 0; i < types.length; i++) {
-          let cur = types[i];
+        var types = ["json", "text", "script"];
+        for (var i = 0; i < types.length; i++) {
+          var cur = types[i];
           if (str.startsWith(`${cur}:`)) {
             return legume[cur](str.replace(new RegExp(`${cur}:`), "").trim());
           }
@@ -100,7 +100,7 @@ legumeload = function() {
       if (typeof input == "string") {
         return legumestring(input);
       } else if (Array.isArray(input)) {
-        let retarr = [];
+        var retarr = [];
         input.forEach(function(cur) {
           retarr.push(legumestring(cur));
         });
@@ -116,7 +116,7 @@ legumeload = function() {
             if (!meta.script) {
               resolve();
             } else {
-              let scripts = meta.script;
+              var scripts = meta.script;
               loop(0);
               function loop(i) {
                 return legume.script(scripts[i]).then(function() {
@@ -153,31 +153,29 @@ legumeload = function() {
         return waitScript.then(function() {
           var ret;
           if (parsed.legumescript && parsed.metadata.name) {
-            let namespace = (legume.scripts[meta.name] =
+            var namespace = (legume.scripts[meta.name] =
               legume.scripts[meta.name] || parsed);
             namespace.clicks = namespace.clicks + 1 || 0;
-            ret = Promise.resolve()
-              .then(function() {
-                return new ((function() {
-                  if (parsed.async) {
-                    if (AsyncFunction) {
-                      return AsyncFunction;
-                    } else {
-                      throw new Error(
-                        "Async Functions not supported in this browser"
-                      );
-                    }
+            ret = Promise.resolve().then(function() {
+              new ((function() {
+                if (parsed.async) {
+                  if (AsyncFunction) {
+                    return AsyncFunction;
                   } else {
-                    return Function;
+                    throw new Error(
+                      "Async Functions not supported in this browser"
+                    );
                   }
-                })())();
-              })(...Object.values(parsed.var), code)
-              .apply(
+                } else {
+                  return Function;
+                }
+              })())(...Object.values(parsed.var), code).apply(
                 namespace,
                 Object.keys(parsed.var).map(function(cur) {
                   return vars[cur];
                 })
               );
+            });
           } else {
             eval.call(null, code);
             ret = Promise.resolve();
