@@ -10,10 +10,12 @@ legumeload = function() {
     var methods = ["github", "npm"];
     for (var i = 0; i < methods.length; i++) {
       var cur = methods[i];
-      if (inurl.protocol == `${cur}:`) {
-        return `https://cdn.jsdelivr.net/${cur == "github" ? "gh" : cur}/${
+      if (inurl.protocol == cur + ":") {
+        return (
+          "https://cdn.jsdelivr.net/" +
+          (cur == "github" ? "gh" : cur) +
           inurl.pathname
-        }`;
+        );
       }
     }
     return inurl.href;
@@ -43,35 +45,35 @@ legumeload = function() {
     scripts: {},
     dir: {
       scripts: {
-        update() {
+        update: function update() {
           var that = this;
           legume.json(scriptdirurl).then(function(json) {
             delete that.unloaded;
             return Object.assign(that, json);
           });
         },
-        get(name) {
+        get: function get(name) {
           var obj = this[name];
           return obj.url.replace(/%VERSION/, obj.latest);
         },
         unloaded: true
       },
       styles: {
-        update() {
+        update: function update() {
           var that = this;
           legume.json(styledirurl).then(function(json) {
             delete that.unloaded;
             return Object.assign(that, json);
           });
         },
-        get(name) {
+        get: function get(name) {
           var obj = this[name];
           return obj.url.replace(/%VERSION/, obj.latest);
         },
         unloaded: true
       }
     },
-    load(input, opts) {
+    load: function load(input, opts) {
       if (typeof input == "string") {
         input = input.trim();
       }
@@ -79,8 +81,8 @@ legumeload = function() {
         var types = ["json", "text", "script"];
         for (var i = 0; i < types.length; i++) {
           var cur = types[i];
-          if (str.startsWith(`${cur}:`)) {
-            return legume[cur](str.replace(new RegExp(`${cur}:`), "").trim());
+          if (str.startsWith(cur + ":")) {
+            return legume[cur](str.replace(new RegExp(cur + ":"), "").trim());
           }
         }
         return legume.script(str);
@@ -107,9 +109,11 @@ legumeload = function() {
         return Promise.all(retarr);
       }
     },
-    process(...args) {
+    process: function process() {
+      var args = Array.from(arguments);
+      console.log(args);
       return Promise.resolve().then(function() {
-        var parsed = parse(...args),
+        var parsed = parse.apply(null, args),
           meta = parsed.metadata,
           code = parsed.code,
           waitScript = new Promise(function(resolve) {
@@ -147,8 +151,8 @@ legumeload = function() {
           },
           exports = module.exports,
           vars = {
-            module,
-            exports
+            module: module,
+            exports: exports
           };
         return waitScript.then(function() {
           var ret;
@@ -157,19 +161,22 @@ legumeload = function() {
               legume.scripts[meta.name] || parsed);
             namespace.clicks = namespace.clicks + 1 || 0;
             ret = Promise.resolve().then(function() {
-              new ((function() {
-                if (parsed.async) {
-                  if (AsyncFunction) {
-                    return AsyncFunction;
+              new (Function.prototype.bind.apply(
+                (function() {
+                  if (parsed.async) {
+                    if (AsyncFunction) {
+                      return AsyncFunction;
+                    } else {
+                      throw new Error(
+                        "Async Functions not supported in this browser"
+                      );
+                    }
                   } else {
-                    throw new Error(
-                      "Async Functions not supported in this browser"
-                    );
+                    return Function;
                   }
-                } else {
-                  return Function;
-                }
-              })())(...Object.values(parsed.var), code).apply(
+                })(),
+                [null].concat(Object.values(parsed.var).concat([code]))
+              ))().apply(
                 namespace,
                 Object.keys(parsed.var).map(function(cur) {
                   return vars[cur];
@@ -189,7 +196,8 @@ legumeload = function() {
         });
       });
     },
-    script(scrurl) {
+    script: function script(scrurl) {
+      scrurl = processurl(scrurl);
       const done = function(fnlurl) {
         return load(fnlurl, "Couldn't load the script.")
           .then(function(r) {
@@ -212,7 +220,7 @@ legumeload = function() {
         return done(scrurl);
       }
     },
-    style(stlurl) {
+    style: function style(stlurl) {
       stlurl = processurl(stlurl);
       const done = function(fnlurl) {
         l.href = fnlurl;
@@ -235,12 +243,12 @@ legumeload = function() {
         return done(stlurl);
       }
     },
-    json(jsonurl) {
+    json: function json(jsonurl) {
       return load(jsonurl, "Couldn't load JSON.").then(function(r) {
         return r.json();
       });
     },
-    text(txturl) {
+    text: function text(txturl) {
       return load(txturl, "Couldn't load text.").then(function(r) {
         return r.text();
       });
@@ -299,7 +307,7 @@ legumeload = function() {
               options[key] = value;
             }
           } else {
-            console.warn(`ignoring invalid metadata option: \`${key}\``);
+            console.warn("ignoring invalid metadata option: `" + key + "}`");
           }
         }
       };
@@ -337,11 +345,15 @@ legumeload = function() {
       legumescript: legumescript
     };
   }
+  var entryScript = entry.dataset.legumeEntry;
+  if (entryScript) {
+    Legume.script(entryScript);
+  }
 };
 (function() {
   var url =
-    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset&callback=legumeload";
+    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset,Object.values&callback=legumeload";
   var script = document.createElement("script");
   script.src = url;
-  document.head.append(script);
+  document.getElementsByTagName("head")[0].appendChild(script);
 })();
