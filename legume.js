@@ -1,14 +1,15 @@
-(() => {
+legumeload = function() {
   var entry = document.currentScript.dataset.legumeEntry;
   var AsyncFunction;
   try {
     AsyncFunction = Object.getPrototypeOf(eval("async () => {}")).constructor;
   } catch (err) {}
   function processurl(inurl) {
+    inurl = new URL(inurl);
     let methods = ["github", "npm"];
     for (let i = 0; i < methods.length; i++) {
       let cur = methods[i];
-      if (inurl.startsWith(`${cur}:`)) {
+      if (inurl.protocol == `${cur}:`) {
         return `https://cdn.jsdelivr.net/${
           cur == "github" ? "gh" : cur
         }/${inurl.replace(new RegExp(`${cur}:`), "").trim()}`;
@@ -83,8 +84,6 @@
       }
       if (typeof opts == "string") {
         switch (opts) {
-          case "github":
-            return legume.github(input);
           case "script":
             return legume.script(input);
           case "json":
@@ -93,8 +92,6 @@
             return legume.text(input);
           case "txtscript":
             return legume.process(input);
-          case "npm":
-            return legume.npm(input);
         }
       }
       if (typeof input == "string") {
@@ -227,22 +224,11 @@
         return done(stlurl);
       }
     },
-    github(ghurl) {
-      return legume.script(`https://cdn.jsdelivr.net/gh/${ghurl}`);
-    },
     json(jsonurl) {
       return load(jsonurl, "Couldn't load JSON.").then(r => r.json());
     },
     text(txturl) {
       return load(txturl, "Couldn't load text.").then(r => r.text());
-    },
-    npm(pkgstr) {
-      return load(
-        `https://cdn.jsdelivr.net/npm/${pkgstr}`,
-        "Couldn't load npm script."
-      )
-        .then(r => r.text())
-        .then(legume.process);
     }
   };
   window.Legume = legume;
@@ -333,7 +319,14 @@
       metadata: Object.assign(options, pmd),
       code: code.join("\n"),
       errors: errors.length ? errors : null,
-      legumescript
+      legumescript: legumescript
     };
   }
+};
+(function() {
+  var url =
+    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch?callback=legumeload";
+  var script = document.createElement("script");
+  script.src = url;
+  document.body.append(script);
 })();
