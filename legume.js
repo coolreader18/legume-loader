@@ -1,5 +1,6 @@
 legumeload = function() {
-  var entry = document.currentScript.dataset.legumeEntry;
+  delete legumeload;
+  var entry = document.querySelector("script[src*=legume]");
   var AsyncFunction;
   try {
     AsyncFunction = Object.getPrototypeOf(eval("async () => {}")).constructor;
@@ -28,7 +29,7 @@ legumeload = function() {
       }
     }
     return fetch(url)
-      .then(r => {
+      .then(function(r) {
         if (r.ok) {
           return r;
         } else {
@@ -43,9 +44,10 @@ legumeload = function() {
     dir: {
       scripts: {
         update() {
-          legume.json(scriptdirurl).then(json => {
-            delete this.unloaded;
-            return Object.assign(this, json);
+          var that = this;
+          legume.json(scriptdirurl).then(function(json) {
+            delete that.unloaded;
+            return Object.assign(that, json);
           });
         },
         get(name) {
@@ -56,9 +58,10 @@ legumeload = function() {
       },
       styles: {
         update() {
-          legume.json(styledirurl).then(json => {
-            delete this.unloaded;
-            return Object.assign(this, json);
+          var that = this;
+          legume.json(styledirurl).then(function(json) {
+            delete that.unloaded;
+            return Object.assign(that, json);
           });
         },
         get(name) {
@@ -98,23 +101,25 @@ legumeload = function() {
         return legumestring(input);
       } else if (Array.isArray(input)) {
         let retarr = [];
-        input.forEach(cur => retarr.push(legumestring(cur)));
+        input.forEach(function(cur) {
+          retarr.push(legumestring(cur));
+        });
         return Promise.all(retarr);
       }
     },
     process(...args) {
-      return Promise.resolve().then(() => {
+      return Promise.resolve().then(function() {
         var parsed = parse(...args),
           meta = parsed.metadata,
           code = parsed.code,
-          waitScript = new Promise(resolve => {
+          waitScript = new Promise(function(resolve) {
             if (!meta.script) {
               resolve();
             } else {
               let scripts = meta.script;
               loop(0);
               function loop(i) {
-                return legume.script(scripts[i]).then(() => {
+                return legume.script(scripts[i]).then(function() {
                   if (scripts.length != i + 1) {
                     loop(i + 1);
                   } else {
@@ -127,12 +132,12 @@ legumeload = function() {
         if (meta.style) {
           meta.style.forEach(legume.style);
         }
-        ["var", "async"].forEach(cur => {
+        ["var", "async"].forEach(function(cur) {
           parsed[cur] = parsed.metadata[cur];
           delete parsed.metadata[cur];
         });
         parsed.var = parsed.var || [];
-        parsed.var = parsed.var.reduce((obj, cur) => {
+        parsed.var = parsed.var.reduce(function(obj, cur) {
           var split = cur.split(" ");
           obj[split[0]] = split[1] || split[0];
           return obj;
@@ -145,66 +150,73 @@ legumeload = function() {
             module,
             exports
           };
-        return waitScript.then(() => {
+        return waitScript.then(function() {
           var ret;
           if (parsed.legumescript && parsed.metadata.name) {
             let namespace = (legume.scripts[meta.name] =
               legume.scripts[meta.name] || parsed);
             namespace.clicks = namespace.clicks + 1 || 0;
-            ret = Promise.resolve().then(() =>
-              new ((() => {
-                if (parsed.async) {
-                  if (AsyncFunction) {
-                    return AsyncFunction;
+            ret = Promise.resolve()
+              .then(function() {
+                return new ((function() {
+                  if (parsed.async) {
+                    if (AsyncFunction) {
+                      return AsyncFunction;
+                    } else {
+                      throw new Error(
+                        "Async Functions not supported in this browser"
+                      );
+                    }
                   } else {
-                    throw new Error(
-                      "Async Functions not supported in this browser"
-                    );
+                    return Function;
                   }
-                } else {
-                  return Function;
-                }
-              })())(...Object.values(parsed.var), code).apply(
+                })())();
+              })(...Object.values(parsed.var), code)
+              .apply(
                 namespace,
-                Object.keys(parsed.var).map(cur => vars[cur])
-              )
-            );
+                Object.keys(parsed.var).map(function(cur) {
+                  return vars[cur];
+                })
+              );
           } else {
             eval.call(null, code);
             ret = Promise.resolve();
           }
-          return ret.then(
-            () =>
-              !Object.getOwnPropertyNames(module.exports).length &&
+          return ret.then(function() {
+            return !Object.getOwnPropertyNames(module.exports).length &&
               !Object.getOwnPropertySymbols(module.exports).length
-                ? undefined
-                : module.exports
-          );
+              ? undefined
+              : module.exports;
+          });
         });
       });
     },
     script(scrurl) {
-      const done = fnlurl =>
-        load(fnlurl, "Couldn't load the script.")
-          .then(r => r.text())
+      const done = function(fnlurl) {
+        return load(fnlurl, "Couldn't load the script.")
+          .then(function(r) {
+            return r.text();
+          })
           .then(legume.process);
+      };
       if (scrurl.startsWith("dir:")) {
         scrurl = scrurl.replace(/dir:/, "").trim();
         return Promise.resolve()
-          .then(
-            () =>
-              legume.dir.scripts.unloaded
-                ? legume.dir.scripts.update()
-                : legume.dir.scripts
-          )
-          .then(dir => done(dir.get(scrurl)));
+          .then(function() {
+            return legume.dir.scripts.unloaded
+              ? legume.dir.scripts.update()
+              : legume.dir.scripts;
+          })
+          .then(function(dir) {
+            return done(dir.get(scrurl));
+          });
       } else {
         return done(scrurl);
       }
     },
     style(stlurl) {
       stlurl = processurl(stlurl);
-      const done = fnlurl => {
+      const done = function(fnlurl) {
         l.href = fnlurl;
         document.head.append(l);
       };
@@ -213,22 +225,27 @@ legumeload = function() {
       if (stlurl.startsWith("dir:")) {
         stlurl = stlurl.replace(/dir:/, "").trim();
         return Promise.resolve()
-          .then(
-            () =>
-              legume.dir.styles.unloaded
-                ? legume.dir.styles.update()
-                : legume.dir.styles
-          )
-          .then(dir => done(dir.get(stlurl)));
+          .then(function() {
+            return legume.dir.styles.unloaded
+              ? legume.dir.styles.update()
+              : legume.dir.styles;
+          })
+          .then(function(dir) {
+            return done(dir.get(stlurl));
+          });
       } else {
         return done(stlurl);
       }
     },
     json(jsonurl) {
-      return load(jsonurl, "Couldn't load JSON.").then(r => r.json());
+      return load(jsonurl, "Couldn't load JSON.").then(function(r) {
+        return r.json();
+      });
     },
     text(txturl) {
-      return load(txturl, "Couldn't load text.").then(r => r.text());
+      return load(txturl, "Couldn't load text.").then(function(r) {
+        return r.text();
+      });
     }
   };
   window.Legume = legume;
@@ -265,7 +282,7 @@ legumeload = function() {
       code = [],
       errors = [],
       legumescript = false,
-      processCmt = comment => {
+      processCmt = function(comment) {
         var match = comment.trim().match(/@([^\s]+)(?:\s+(.*))?$/);
         if (match) {
           var key = match[1],
@@ -288,7 +305,7 @@ legumeload = function() {
           }
         }
       };
-    data.match(/[^\r\n]+/g).forEach((line, i, lines) => {
+    data.match(/[^\r\n]+/g).forEach(function(line, i, lines) {
       if (cmt.cmt.test(line)) {
         var comment = line.replace(cmt.cmt, "").trim();
         if (cmt.single.start.test(comment)) {
@@ -325,8 +342,8 @@ legumeload = function() {
 };
 (function() {
   var url =
-    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch?callback=legumeload";
+    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset&callback=legumeload";
   var script = document.createElement("script");
   script.src = url;
-  document.body.append(script);
+  document.head.append(script);
 })();
