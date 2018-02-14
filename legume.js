@@ -1,5 +1,8 @@
 legumeload = function() {
   delete legumeload;
+  function _throw(e) {
+    throw e;
+  }
   var entry = document.querySelector("script[src*=legume]");
   var AsyncFunction;
   try {
@@ -19,7 +22,8 @@ legumeload = function() {
       if (inurl.protocol == cur + ":") {
         return (
           "https://cdn.jsdelivr.net/" +
-          (cur == "github" ? "gh" : cur) + "/" +
+          (cur == "github" ? "gh" : cur) +
+          "/" +
           inurl.pathname
         );
       }
@@ -29,14 +33,10 @@ legumeload = function() {
   function load(inurl, msg) {
     inurl = processurl(inurl);
     return fetch(inurl)
-    .then(function(r) {
-      if (r.ok) {
-        return r;
-      } else {
-        throw new Error(msg);
-      }
-    })
-    .catch(alert);
+      .then(function(r) {
+        return r.ok ? r : _throw(new Error(msg));
+      })
+      .catch(alert);
   }
   var legume = {
     version: "dev",
@@ -86,16 +86,12 @@ legumeload = function() {
         return legume.script(str);
       }
       if (typeof opts == "string") {
-        switch (opts) {
-          case "script":
-          return legume.script(input);
-          case "json":
-          return legume.json(input);
-          case "text":
-          return legume.text(input);
-          case "txtscript":
-          return legume.process(input);
-        }
+        ({
+          script: legume.script,
+          json: legume.json,
+          text: legume.text,
+          txtscript: legume.process
+        }[opts](input));
       }
       if (typeof input == "string") {
         return legumestring(input);
@@ -111,25 +107,25 @@ legumeload = function() {
       var args = Array.from(arguments);
       return Promise.resolve().then(function() {
         var parsed = parse.apply(null, args),
-        meta = parsed.metadata,
-        code = parsed.code,
-        waitScript = new Promise(function(resolve) {
-          if (!meta.script) {
-            resolve();
-          } else {
-            var scripts = meta.script;
-            loop(0);
-            function loop(i) {
-              return legume.script(scripts[i]).then(function() {
-                if (scripts.length != i + 1) {
-                  loop(i + 1);
-                } else {
-                  resolve();
-                }
-              });
+          meta = parsed.metadata,
+          code = parsed.code,
+          waitScript = new Promise(function(resolve) {
+            if (!meta.script) {
+              resolve();
+            } else {
+              var scripts = meta.script;
+              loop(0);
+              function loop(i) {
+                return legume.script(scripts[i]).then(function() {
+                  if (scripts.length != i + 1) {
+                    loop(i + 1);
+                  } else {
+                    resolve();
+                  }
+                });
+              }
             }
-          }
-        });
+          });
         if (meta.style) {
           meta.style.forEach(legume.style);
         }
@@ -144,89 +140,88 @@ legumeload = function() {
           return obj;
         }, {});
         var module = {
-          exports: {}
-        },
-        exports = module.exports,
-        vars = {
-          module: module,
-          exports: exports
-        };
+            exports: {}
+          },
+          exports = module.exports,
+          vars = {
+            module: module,
+            exports: exports
+          };
         return waitScript.then(function() {
           var ret;
           if (parsed.legumescript && parsed.metadata.name) {
             var namespace = (legume.scripts[meta.name] =
               legume.scripts[meta.name] || parsed);
-              namespace.clicks = namespace.clicks + 1 || 0;
-              ret = Promise.resolve().then(function() {
-                var func = new (Function.prototype.bind.apply(
-                  (function() {
-                    if (parsed.async) {
-                      if (AsyncFunction) {
-                        return AsyncFunction;
-                      } else {
-                        throw new Error(
+            namespace.clicks = namespace.clicks + 1 || 0;
+            ret = Promise.resolve().then(function() {
+              var func = new (Function.prototype.bind.apply(
+                parsed.async
+                  ? AsyncFunction
+                    ? AsyncFunction
+                    : _throw(
+                        new Error(
                           "Async Functions not supported in this browser"
-                        );
-                      }
-                    } else {
-                      return Function;
-                    }
-                  })(),
-                  [null].concat(Object.values(parsed.var).concat([code]))
-                ))();
-                var s = document.createElement("script");
-                s.text = "(" + func.toString() + ").apply(Legume.curnsp, Legume.curargs);"
-                Legume.curnsp = namespace;
-                Legume.curargs = Object.keys(parsed.var).map(function(cur) {
-                  return vars[cur];
-                });
-                document.body.append(s);
-                s.remove();
-                delete Legume.curnsp;
-                delete Legume.curargs;
+                        )
+                      )
+                  : Function,
+                [null].concat(Object.values(parsed.var).concat([code]))
+              ))();
+              var s = document.createElement("script");
+              s.text =
+                "(" +
+                func.toString() +
+                ").apply(Legume.curnsp, Legume.curargs);";
+              Legume.curnsp = namespace;
+              Legume.curargs = Object.keys(parsed.var).map(function(cur) {
+                return vars[cur];
               });
-            } else {
-              eval.call(null, code);
-              ret = Promise.resolve();
-            }
-            return ret.then(function() {
-              return !Object.getOwnPropertyNames(module.exports).length &&
+              document.body.append(s);
+              s.remove();
+              delete Legume.curnsp;
+              delete Legume.curargs;
+            });
+          } else {
+            eval.call(null, code);
+            ret = Promise.resolve();
+          }
+          return ret.then(function() {
+            return !Object.getOwnPropertyNames(module.exports).length &&
               !Object.getOwnPropertySymbols(module.exports).length
               ? undefined
               : module.exports;
-            });
           });
         });
-      },
-      script: function script(scrurl) {
-        return load(scrurl, "Couldn't load the script.")
+      });
+    },
+    script: function script(scrurl) {
+      return load(scrurl, "Couldn't load the script.")
         .then(function(r) {
           return r.text();
         })
         .then(legume.process);
-      },
-      style: function style(stlurl) {
-        var l = document.createElement("link");
-        l.href = processurl(stlurl);
-        document.head.append(l);
-        l.rel = "stylesheet";
-      },
-      json: function json(jsonurl) {
-        return load(jsonurl, "Couldn't load JSON.").then(function(r) {
-          return r.json();
-        });
-      },
-      text: function text(txturl) {
-        return load(txturl, "Couldn't load text.").then(function(r) {
-          return r.text();
-        });
-      }
-    };
-    window.Legume = legume;
-    if (entry) legume.load(entry);
-    function parse(data, pmd) {
-      // pmd == provided metadata
-      var inBlock = false,
+    },
+    style: function style(stlurl) {
+      var l = document.createElement("link");
+      l.href = processurl(stlurl);
+      document.head.append(l);
+      l.rel = "stylesheet";
+    },
+    json: function json(jsonurl) {
+      return load(jsonurl, "Couldn't load JSON.").then(function(r) {
+        return r.json();
+      });
+    },
+    text: function text(txturl) {
+      return load(txturl, "Couldn't load text.").then(function(r) {
+        return r.text();
+      });
+    }
+  };
+  window.Legume = legume;
+  if (entry) legume.load(entry);
+  function parse(data, pmd) {
+    // pmd == provided metadata
+    var inBlock = false,
       cmt = {
         cmt: /^(\s*\/\/\s*)/,
         multi: {
@@ -260,7 +255,7 @@ legumeload = function() {
         var match = comment.trim().match(/@([^\s]+)(?:\s+(.*))?$/);
         if (match) {
           var key = match[1],
-          value = match[2];
+            value = match[2];
           if (key !== undefined) {
             if (Array.isArray(md[key])) {
               options[key] = options[key] || [];
@@ -279,49 +274,49 @@ legumeload = function() {
           }
         }
       };
-      data.match(/[^\r\n]+/g).forEach(function(line, i, lines) {
-        if (cmt.cmt.test(line)) {
-          var comment = line.replace(cmt.cmt, "").trim();
-          if (cmt.single.start.test(comment)) {
-            comment.replace(cmt.single.start, "");
-            for (
-              var m = cmt.single.match.exec(comment);
-              m;
-              m = cmt.single.match.exec(comment)
-            ) {
-              processCmt(m[0]);
-            }
+    data.match(/[^\r\n]+/g).forEach(function(line, i, lines) {
+      if (cmt.cmt.test(line)) {
+        var comment = line.replace(cmt.cmt, "").trim();
+        if (cmt.single.start.test(comment)) {
+          comment.replace(cmt.single.start, "");
+          for (
+            var m = cmt.single.match.exec(comment);
+            m;
+            m = cmt.single.match.exec(comment)
+          ) {
+            processCmt(m[0]);
           }
-        } else if (cmt.multi.end.test(line) && inBlock) {
-          inBlock = false;
-        } else if (inBlock) {
-          processCmt(line);
-        } else if (cmt.multi.start.test(line)) {
-          inBlock = true;
-          legumescript = true;
-        } else {
-          code.push(line);
         }
-        if (inBlock && i + 1 == lines.length) {
-          errors.push("missing metdata block closing");
-        }
-      });
-      return {
-        metadata: Object.assign(options, pmd),
-        code: code.join("\n"),
-        errors: errors.length ? errors : null,
-        legumescript: legumescript
-      };
-    }
-    var entryScript = entry.dataset.legumeEntry;
-    if (entryScript) {
-      Legume.script(entryScript);
-    }
-  };
-  (function() {
-    var url =
+      } else if (cmt.multi.end.test(line) && inBlock) {
+        inBlock = false;
+      } else if (inBlock) {
+        processCmt(line);
+      } else if (cmt.multi.start.test(line)) {
+        inBlock = true;
+        legumescript = true;
+      } else {
+        code.push(line);
+      }
+      if (inBlock && i + 1 == lines.length) {
+        errors.push("missing metdata block closing");
+      }
+    });
+    return {
+      metadata: Object.assign(options, pmd),
+      code: code.join("\n"),
+      errors: errors.length ? errors : null,
+      legumescript: legumescript
+    };
+  }
+  var entryScript = entry.dataset.legumeEntry;
+  if (entryScript) {
+    Legume.script(entryScript);
+  }
+};
+(function() {
+  var url =
     "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset,Object.values&callback=legumeload";
-    var script = document.createElement("script");
-    script.src = url;
-    document.getElementsByTagName("head")[0].appendChild(script);
-  })();
+  var script = document.createElement("script");
+  script.src = url;
+  document.getElementsByTagName("head")[0].appendChild(script);
+})();
