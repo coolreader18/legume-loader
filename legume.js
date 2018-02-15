@@ -27,7 +27,8 @@ legumeload = function() {
             fullURL:
               "https://cdn.jsdelivr.net/" +
               (cur == "github" ? "gh" : cur) +
-              inurl.pathname.replace(/\s/g, "")
+              "/" +
+              inurl.pathname
           },
           method: cur
         };
@@ -69,12 +70,14 @@ legumeload = function() {
         return legume.script(str);
       }
       if (typeof opts == "string") {
-        ({
+        return {
           script: legume.script,
           json: legume.json,
           text: legume.text,
-          txtscript: legume.process
-        }[opts](input));
+          txtscript: function(input) {
+            return legume.process({ res: input });
+          }
+        }[opts](input);
       }
       if (typeof input == "string") {
         return legumestring(input);
@@ -87,9 +90,8 @@ legumeload = function() {
       }
     },
     process: function process(loadres, pmd) {
-      console.log(loadres);
       return Promise.resolve().then(function() {
-        var parsed = parse(loadres.res, Object.assign(loadres.md, pmd)),
+        var parsed = parse(loadres.res, Object.assign({}, loadres.md, pmd)),
           meta = parsed.metadata,
           code = parsed.code,
           waitScript = new Promise(function(resolve) {
@@ -97,13 +99,16 @@ legumeload = function() {
               resolve();
             } else {
               var scripts = meta.script;
+              var exports = {};
               loop(0);
               function loop(i) {
-                return legume.script(scripts[i]).then(function() {
+                var cur = scripts[i];
+                return legume.script(cur.script).then(function(exp) {
+                  exports[cur.as] = exp;
                   if (scripts.length != i + 1) {
                     loop(i + 1);
                   } else {
-                    resolve();
+                    resolve(exports);
                   }
                 });
               }
@@ -117,7 +122,9 @@ legumeload = function() {
           delete parsed.metadata[cur];
         });
         var url = parsed.url;
-        code += url.fullURL ? "\n//# sourceURL=" + url.fullURL : "";
+        if (url) {
+          code += url.fullURL ? "\n//# sourceURL=" + url.fullURL : "";
+        }
         parsed.var = parsed.var || [];
         parsed.var = parsed.var.reduce(function(obj, cur) {
           var split = cur.split(" ");
@@ -132,9 +139,28 @@ legumeload = function() {
             module: module,
             exports: exports
           };
-        return waitScript.then(function() {
+        return waitScript.then(function(deps) {
+          var depsnames = (meta.script || []).reduce(function(obj, cur, i) {
+            if (cur.name) obj[cur.name] = Object.values(deps)[i];
+            return obj;
+          }, {});
+          Object.assign(vars, deps, {
+            require: function require(mod) {
+              return depsnames[mod];
+            }
+          });
+          Object.assign(
+            parsed.var,
+            Object.keys(deps || {}).reduce(function(obj, cur) {
+              obj[cur] = cur;
+              return obj;
+            }, {})
+          );
           var ret;
-          if (parsed.legumescript && parsed.metadata.name) {
+          if (
+            (parsed.legumescript && parsed.metadata.name) ||
+            parsed.method == "npm"
+          ) {
             var namespace = (legume.scripts[meta.name] =
               legume.scripts[meta.name] || parsed);
             namespace.clicks = namespace.clicks + 1 || 0;
@@ -149,12 +175,17 @@ legumeload = function() {
                         )
                       )
                   : Function,
-                [null].concat(Object.values(parsed.var).concat([code]))
+                [null]
+                  .concat(Object.values(parsed.var))
+                  .concat(parsed.method == "npm" ? ["module", "exports"] : [])
+                  .concat([code])
               ))().apply(
                 namespace,
-                Object.keys(parsed.var).map(function(cur) {
-                  return vars[cur];
-                })
+                Object.keys(parsed.var)
+                  .concat(parsed.method == "npm" ? ["module", "exports"] : [])
+                  .map(function(cur) {
+                    return vars[cur];
+                  })
               );
             });
           } else {
@@ -276,8 +307,19 @@ legumeload = function() {
         errors.push("missing metdata block closing");
       }
     });
+    var metadata = Object.assign(options, pmd);
+    if (metadata.script)
+      metadata.script.forEach(function(cur, i) {
+        var arr = cur.split(" ");
+        var obj = {};
+        for (var j = 1; j < arr.length; j += 2) {
+          var temparr = arr.slice(j, j + 2);
+          obj[temparr[0]] = temparr[1];
+        }
+        metadata.script[i] = { script: arr[0], as: obj.as, name: obj.name };
+      });
     return {
-      metadata: Object.assign(options, pmd),
+      metadata: metadata,
       code: code.join("\n"),
       errors: errors.length ? errors : null,
       legumescript: legumescript
