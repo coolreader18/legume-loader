@@ -9,10 +9,12 @@ legumeload = function() {
     AsyncFunction = Object.getPrototypeOf(eval("async () => {}")).constructor;
   } catch (err) {}
   function processurl(inurl) {
+    var relative;
     try {
       inurl = new URL(inurl);
     } catch (err) {
       if (err.message == "Failed to construct 'URL': Invalid URL") {
+        relative = inurl;
         inurl = new URL(inurl, location.href);
       }
     }
@@ -20,57 +22,32 @@ legumeload = function() {
     for (var i = 0; i < methods.length; i++) {
       var cur = methods[i];
       if (inurl.protocol == cur + ":") {
-        return (
-          "https://cdn.jsdelivr.net/" +
-          (cur == "github" ? "gh" : cur) +
-          "/" +
-          inurl.pathname
-        );
+        return {
+          fullURL:
+            "https://cdn.jsdelivr.net/" +
+            (cur == "github" ? "gh" : cur) +
+            "/" +
+            inurl.pathname,
+          relURL: relative
+        };
       }
     }
-    return inurl.href;
+    return { fullURL: inurl.href, relURL: relative };
   }
-  function load(inurl, msg) {
-    inurl = processurl(inurl);
-    return fetch(inurl)
+  function load(inurl, msg, method) {
+    var purl = processurl(inurl);
+    return fetch(purl.fullURL)
       .then(function(r) {
-        return r.ok ? r : _throw(new Error(msg));
+        return r.ok ? r[method]() : _throw(new Error(msg));
+      })
+      .then(function(r) {
+        return { res: r, url: purl };
       })
       .catch(alert);
   }
   var legume = {
     version: "dev",
     scripts: {},
-    dir: {
-      scripts: {
-        update: function update() {
-          var that = this;
-          legume.json(scriptdirurl).then(function(json) {
-            delete that.unloaded;
-            return Object.assign(that, json);
-          });
-        },
-        get: function get(name) {
-          var obj = this[name];
-          return obj.url.replace(/%VERSION/, obj.latest);
-        },
-        unloaded: true
-      },
-      styles: {
-        update: function update() {
-          var that = this;
-          legume.json(styledirurl).then(function(json) {
-            delete that.unloaded;
-            return Object.assign(that, json);
-          });
-        },
-        get: function get(name) {
-          var obj = this[name];
-          return obj.url.replace(/%VERSION/, obj.latest);
-        },
-        unloaded: true
-      }
-    },
     load: function load(input, opts) {
       if (typeof input == "string") {
         input = input.trim();
@@ -106,7 +83,11 @@ legumeload = function() {
     process: function process() {
       var args = Array.from(arguments);
       return Promise.resolve().then(function() {
-        var parsed = parse.apply(null, args),
+        var parsed = parse.call(
+            null,
+            args[0].res,
+            Object.assign({ url: args[0].url }, args[1])
+          ),
           meta = parsed.metadata,
           code = parsed.code,
           waitScript = new Promise(function(resolve) {
@@ -129,10 +110,12 @@ legumeload = function() {
         if (meta.style) {
           meta.style.forEach(legume.style);
         }
-        ["var", "async"].forEach(function(cur) {
+        ["var", "async", "url"].forEach(function(cur) {
           parsed[cur] = parsed.metadata[cur];
           delete parsed.metadata[cur];
         });
+        var url = parsed.url;
+        code += url.fullURL ? "\n//# sourceURL=" + url.fullURL : "";
         parsed.var = parsed.var || [];
         parsed.var = parsed.var.reduce(function(obj, cur) {
           var split = cur.split(" ");
@@ -154,7 +137,7 @@ legumeload = function() {
               legume.scripts[meta.name] || parsed);
             namespace.clicks = namespace.clicks + 1 || 0;
             ret = Promise.resolve().then(function() {
-              var func = new (Function.prototype.bind.apply(
+              return new (Function.prototype.bind.apply(
                 parsed.async
                   ? AsyncFunction
                     ? AsyncFunction
@@ -165,20 +148,12 @@ legumeload = function() {
                       )
                   : Function,
                 [null].concat(Object.values(parsed.var).concat([code]))
-              ))();
-              var s = document.createElement("script");
-              s.text =
-                "(" +
-                func.toString() +
-                ").apply(Legume.curnsp, Legume.curargs);";
-              Legume.curnsp = namespace;
-              Legume.curargs = Object.keys(parsed.var).map(function(cur) {
-                return vars[cur];
-              });
-              document.body.append(s);
-              s.remove();
-              delete Legume.curnsp;
-              delete Legume.curargs;
+              ))().apply(
+                namespace,
+                Object.keys(parsed.var).map(function(cur) {
+                  return vars[cur];
+                })
+              );
             });
           } else {
             eval.call(null, code);
@@ -194,11 +169,9 @@ legumeload = function() {
       });
     },
     script: function script(scrurl) {
-      return load(scrurl, "Couldn't load the script.")
-        .then(function(r) {
-          return r.text();
-        })
-        .then(legume.process);
+      return load(scrurl, "Couldn't load the script.", "text").then(
+        legume.process
+      );
     },
     style: function style(stlurl) {
       var l = document.createElement("link");
@@ -207,13 +180,13 @@ legumeload = function() {
       l.rel = "stylesheet";
     },
     json: function json(jsonurl) {
-      return load(jsonurl, "Couldn't load JSON.").then(function(r) {
-        return r.json();
+      return load(jsonurl, "Couldn't load JSON.", "json").then(function(r) {
+        return r.res;
       });
     },
     text: function text(txturl) {
       return load(txturl, "Couldn't load text.").then(function(r) {
-        return r.text();
+        return r.res;
       });
     }
   };
