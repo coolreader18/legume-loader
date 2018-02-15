@@ -27,8 +27,7 @@ legumeload = function() {
             fullURL:
               "https://cdn.jsdelivr.net/" +
               (cur == "github" ? "gh" : cur) +
-              "/" +
-              inurl.pathname.trim()
+              inurl.pathname.replace(/\s/g, "")
           },
           method: cur
         };
@@ -41,7 +40,11 @@ legumeload = function() {
     var purl = pmd.url;
     return fetch(purl.fullURL)
       .then(function(r) {
-        return r.ok ? r[method]() : _throw(new Error(msg));
+        if (r.ok) {
+          return r[method]();
+        } else {
+          throw new Error(msg);
+        }
       })
       .then(function(r) {
         return { res: r, md: pmd };
