@@ -86,14 +86,10 @@ legumeload = function() {
         return Promise.all(retarr);
       }
     },
-    process: function process() {
-      var args = Array.from(arguments);
+    process: function process(loadres, pmd) {
+      console.log(loadres);
       return Promise.resolve().then(function() {
-        var parsed = parse.call(
-            null,
-            args[0].res,
-            Object.assign(args[0].md, args[1])
-          ),
+        var parsed = parse(loadres.res, Object.assign(loadres.md, pmd)),
           meta = parsed.metadata,
           code = parsed.code,
           waitScript = new Promise(function(resolve) {
@@ -294,7 +290,7 @@ legumeload = function() {
 };
 (function() {
   var url =
-    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset,Object.values&callback=legumeload";
+    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset,Object.values,Object.entries&callback=legumeload";
   var script = document.createElement("script");
   script.src = url;
   document.getElementsByTagName("head")[0].appendChild(script);
