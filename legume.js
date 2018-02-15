@@ -23,25 +23,28 @@ legumeload = function() {
       var cur = methods[i];
       if (inurl.protocol == cur + ":") {
         return {
-          fullURL:
-            "https://cdn.jsdelivr.net/" +
-            (cur == "github" ? "gh" : cur) +
-            "/" +
-            inurl.pathname,
-          relURL: relative
+          url: {
+            fullURL:
+              "https://cdn.jsdelivr.net/" +
+              (cur == "github" ? "gh" : cur) +
+              "/" +
+              inurl.pathname.trim()
+          },
+          method: cur
         };
       }
     }
-    return { fullURL: inurl.href, relURL: relative };
+    return { url: { fullURL: inurl.href, relURL: relative } };
   }
-  function load(inurl, msg, method) {
-    var purl = processurl(inurl);
+  function load(inurl, msg, method, pmd) {
+    pmd = Object.assign(processurl(inurl), pmd || {});
+    var purl = pmd.url;
     return fetch(purl.fullURL)
       .then(function(r) {
         return r.ok ? r[method]() : _throw(new Error(msg));
       })
       .then(function(r) {
-        return { res: r, url: purl };
+        return { res: r, md: pmd };
       })
       .catch(alert);
   }
@@ -86,7 +89,7 @@ legumeload = function() {
         var parsed = parse.call(
             null,
             args[0].res,
-            Object.assign({ url: args[0].url }, args[1])
+            Object.assign(args[0].md, args[1])
           ),
           meta = parsed.metadata,
           code = parsed.code,
@@ -110,7 +113,7 @@ legumeload = function() {
         if (meta.style) {
           meta.style.forEach(legume.style);
         }
-        ["var", "async", "url"].forEach(function(cur) {
+        ["var", "async", "url", "method"].forEach(function(cur) {
           parsed[cur] = parsed.metadata[cur];
           delete parsed.metadata[cur];
         });
