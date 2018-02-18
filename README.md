@@ -6,7 +6,7 @@ index.html:
 <html>
 <head>
   <script
-  src=https://cdn.jsdelivr.net/gh/coolreader18/legume-loader@latest/legume.min.js
+  src=https://cdn.jsdelivr.net/npm/legume-loader@latest/legume.min.js
   data-legume-entry=script.js></script>
 </head>
 <body>
@@ -20,8 +20,7 @@ script.js:
 ```javascript
 /* @legume
  * @name my-script
- * @version 1.0.0
- * @script https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js
+ * @script npm:jquery@3.3.1
  */
 $("#mydiv").text("Now I can use jQuery!");
 ```
@@ -33,5 +32,5 @@ I dunno, why are you bean so mean?
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
-* This is based off of, both in concept and in a fair amount of code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
-* Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little actual code from there, but the project was inspired by it.
+* This is based off of, in concept and some code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
+* Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little code from there, but the project was inspired by it.
