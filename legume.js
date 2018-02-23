@@ -1,277 +1,286 @@
-window.legumeload = function(root) {
-  var entry = legumeload.curscr;
-  var root = legumeload.root;
-  delete window.legumeload;
-  function parseURL(inurl) {
-    try {
-      inurl = new URL(inurl);
-    } catch (err) {
-      if (err.message == "Failed to construct 'URL': Invalid URL") {
-        inurl = new URL(inurl, location.href);
-      }
+(function() {
+  function get(url, async, cb) {
+    var xhr = new XMLHttpRequest();
+    xhr.onload = load;
+    xhr.onerror = alert;
+    function load() {
+      cb(xhr.response);
     }
-    var ret = {};
-    var methods = ["github", "npm"];
-    for (var i = 0; i < methods.length; i++) {
-      var cur = methods[i];
-      if (inurl.protocol == cur + ":") {
-        return {
-          url: new URL(
-            "https://cdn.jsdelivr.net/" +
-              (cur == "github" ? "gh" : cur) +
-              "/" +
-              inurl.pathname
-          ),
-          name: inurl.pathname
-            .split("/")
-            [cur == "github" ? 1 : 0].split("@")[0],
-          version:
-            inurl.pathname.split("/")[cur == "github" ? 1 : 0].split("@")[1] ||
-            "latest",
-          method: cur,
-          legumescript: cur == "npm" ? true : undefined
-        };
-      }
-    }
-    return { url: inurl };
+    xhr.open("GET", url, async);
+    xhr.send();
+    if (!async) load();
   }
-  var legume = Object.assign(
-    function legume(input, dontload) {
-      var output = {};
-      Object.assign(output, parseURL(input));
-      return legume.scripts[output.name]
-        ? require(output.name)
-        : fetch(output.url)
-            .then(function(r) {
-              return r.text();
-            })
-            .then(function(code) {
+  var legumeload = function(root, entry) {
+    delete window.legumeload;
+    function parseURL(inurl) {
+      try {
+        inurl = new URL(inurl);
+      } catch (err) {
+        if (err.message == "Failed to construct 'URL': Invalid URL") {
+          inurl = new URL(inurl, location.href);
+        }
+      }
+      var ret = {};
+      var methods = ["github", "npm"];
+      for (var i = 0; i < methods.length; i++) {
+        var cur = methods[i];
+        if (inurl.protocol == cur + ":") {
+          return {
+            url: new URL(
+              "https://cdn.jsdelivr.net/" +
+                (cur == "github" ? "gh" : cur) +
+                "/" +
+                inurl.pathname
+            ),
+            name: inurl.pathname
+              .split("/")
+              [cur == "github" ? 1 : 0].split("@")[0],
+            version:
+              inurl.pathname
+                .split("/")
+                [cur == "github" ? 1 : 0].split("@")[1] || "latest",
+            method: cur,
+            legumescript: cur == "npm" ? true : undefined
+          };
+        }
+      }
+      return { url: inurl };
+    }
+    var legume = Object.assign(
+      function legume(input, dontload) {
+        var output = {};
+        Object.assign(output, parseURL(input));
+        return legume.scripts[output.name]
+          ? require(output.name)
+          : new Promise(res => get(output.url, false, res)).then(function(
+              code
+            ) {
               output.code = code;
               return legume.process(output, dontload);
             });
-    },
-    {
-      version: "dev",
-      scripts: {},
-      cache: {},
-      require: require,
-      global: { require: require },
-      style: function style(stlurl) {
-        stlurl = parseURL(stlurl).url;
-        document.head.appendChild(
-          Object.assign(document.createElement("link"), {
-            rel: "stylesheet",
-            href: stlurl
-          })
-        );
       },
-      process(scriptobj, dontload) {
-        if (typeof scriptobj == "string") scriptobj = { code: scriptobj };
-        parse(scriptobj);
-        scriptobj.name = scriptobj.name || scriptobj.metadata.name;
-        if (legume.scripts[scriptobj.name])
-          if (!dontload) {
-            return require(scriptobj.name);
-          } else return;
-        legume.scripts[scriptobj.name] = scriptobj;
-        var ret = Promise.resolve(),
-          requires = scriptobj.requires;
-        if (requires.styles) requires.styles.forEach(legume.style);
-        if (requires.scripts)
-          ret = ret.then(function() {
-            return Promise.all(
-              requires.scripts.reduce(function(arr, scr) {
-                arr.push(legume(scr.script, true));
-                return arr;
-              }, [])
-            );
+      {
+        version: "dev",
+        scripts: {},
+        cache: {},
+        require: require,
+        global: { require: require },
+        style: function style(stlurl) {
+          stlurl = parseURL(stlurl).url;
+          document.head.appendChild(
+            Object.assign(document.createElement("link"), {
+              rel: "stylesheet",
+              href: stlurl
+            })
+          );
+        },
+        process(scriptobj, dontload) {
+          if (typeof scriptobj == "string") scriptobj = { code: scriptobj };
+          parse(scriptobj);
+          scriptobj.name = scriptobj.name || scriptobj.metadata.name;
+          if (legume.scripts[scriptobj.name])
+            if (!dontload) {
+              return require(scriptobj.name);
+            } else return;
+          legume.scripts[scriptobj.name] = scriptobj;
+          var ret = Promise.resolve(),
+            requires = scriptobj.requires;
+          if (requires.styles) requires.styles.forEach(legume.style);
+          if (requires.scripts)
+            ret = ret.then(function() {
+              return Promise.all(
+                requires.scripts.reduce(function(arr, scr) {
+                  arr.push(legume(scr.script, true));
+                  return arr;
+                }, [])
+              );
+            });
+          return ret.then(function() {
+            if (!dontload) require(scriptobj.name);
           });
-        return ret.then(function() {
-          if (!dontload) require(scriptobj.name);
-        });
-      }
-    }
-  );
-  legume.global.global = legume.global;
-  function require(mod) {
-    mod = legume.scripts[mod];
-    if (mod) {
-      if (legume.cache[mod.name]) return legume.cache[mod.name];
-      var module = {
-        exports: {},
-        children: {},
-        require: function require(mod) {
-          this.children[mod] = legume.scripts[mod];
-          return require(mod);
         }
-      };
-      var possargs = {
-        module: module,
-        require: module.require,
-        exports: module.exports
-      };
-      var passargs = ["module", "exports"];
-      var requires = mod.requires;
-      if (requires.scripts) {
-        requires.scripts.forEach(function(cur) {
-          if (cur.as && !Object.keys(possargs).includes(cur.as)) {
-            possargs[cur.as] = require(parseURL(cur.script).name);
-            passargs.push(cur.as);
-          }
-        });
       }
-      var code = mod.code + (mod.url ? "\n//# sourceURL=" + mod.url : "");
-      if (mod.legumescript) {
-        eval(
-          "with(Legume.global)(" +
-            Function.apply(null, passargs.concat([code])).toString() +
-            ")"
-        ).apply(
-          legume.global,
-          passargs.reduce(function(arr, cur) {
-            arr.push(possargs[cur]);
-            return arr;
-          }, [])
-        );
-        legume.cache[mod.name] = possargs.module.exports;
-        return possargs.module.exports;
-      } else {
-        return eval(code);
+    );
+    legume.global.global = legume.global;
+    function require(mod) {
+      mod = legume.scripts[mod];
+      if (mod) {
+        if (legume.cache[mod.name]) return legume.cache[mod.name];
+        var module = {
+          exports: {},
+          children: {},
+          require: function require(mod) {
+            this.children[mod] = legume.scripts[mod];
+            return require(mod);
+          }
+        };
+        var possargs = {
+          module: module,
+          require: module.require,
+          exports: module.exports
+        };
+        var passargs = ["module", "exports"];
+        var requires = mod.requires;
+        if (requires.scripts) {
+          requires.scripts.forEach(function(cur) {
+            if (cur.as && !Object.keys(possargs).includes(cur.as)) {
+              possargs[cur.as] = require(parseURL(cur.script).name);
+              passargs.push(cur.as);
+            }
+          });
+        }
+        var code = mod.code + (mod.url ? "\n//# sourceURL=" + mod.url : "");
+        if (mod.legumescript) {
+          eval(
+            "with(Legume.global)(" +
+              Function.apply(null, passargs.concat([code])).toString() +
+              ")"
+          ).apply(
+            legume.global,
+            passargs.reduce(function(arr, cur) {
+              arr.push(possargs[cur]);
+              return arr;
+            }, [])
+          );
+          legume.cache[mod.name] = possargs.module.exports;
+          return possargs.module.exports;
+        } else {
+          return eval(code);
+        }
       }
     }
-  }
-  function parse(script) {
-    var inBlock = false,
-      cmt = {
-        start: /^(\s*\/\*\s*@legume\s*)/i,
-        end: /^\s*\*\//
-      },
-      md = {
-        name: "",
-        version: "",
-        description: "",
-        repository: "",
-        author: [],
-        email: "",
-        url: "",
-        license: "",
-        script: [],
-        style: []
-      },
-      options = {},
-      code = [],
-      errors = [],
-      processCmt = function(comment) {
-        var match = comment.trim().match(/@([^\s]+)(?:\s+(.*))?$/);
-        if (match) {
-          var key = match[1],
-            value = match[2];
-          if (key !== undefined) {
-            if (Array.isArray(md[key])) {
-              options[key] = options[key] || [];
-              options[key].push(value);
-            } else if (typeof md[key] == "boolean") {
-              try {
-                options[key] = JSON.parse(value);
-              } catch (e) {
-                options[key] = true;
+    function parse(script) {
+      var inBlock = false,
+        cmt = {
+          start: /^(\s*\/\*\s*@legume\s*)/i,
+          end: /^\s*\*\//
+        },
+        md = {
+          name: "",
+          version: "",
+          description: "",
+          repository: "",
+          author: [],
+          email: "",
+          url: "",
+          license: "",
+          script: [],
+          style: []
+        },
+        options = {},
+        code = [],
+        errors = [],
+        processCmt = function(comment) {
+          var match = comment.trim().match(/@([^\s]+)(?:\s+(.*))?$/);
+          if (match) {
+            var key = match[1],
+              value = match[2];
+            if (key !== undefined) {
+              if (Array.isArray(md[key])) {
+                options[key] = options[key] || [];
+                options[key].push(value);
+              } else if (typeof md[key] == "boolean") {
+                try {
+                  options[key] = JSON.parse(value);
+                } catch (e) {
+                  options[key] = true;
+                }
+              } else {
+                options[key] = value;
               }
             } else {
-              options[key] = value;
-            }
-          } else {
-            console.warn("ignoring invalid metadata option: `" + key + "}`");
-          }
-        }
-      };
-    script.code.match(/[^\r\n]+/g).forEach(function(line, i, lines) {
-      if (cmt.end.test(line) && inBlock) {
-        inBlock = false;
-      } else if (inBlock) {
-        processCmt(line);
-      } else if (cmt.start.test(line)) {
-        inBlock = true;
-        script.legumescript = true;
-      } else {
-        code.push(line);
-      }
-      if (inBlock && i + 1 == lines.length) {
-        errors.push("missing metdata block closing");
-      }
-    });
-    var requires = {
-      scripts: options.script,
-      styles: options.style
-    };
-    delete options.script;
-    delete options.style;
-    if (requires.scripts)
-      requires.scripts.forEach(function(cur, i) {
-        var arr = cur.split(" ");
-        var obj = {};
-        for (var j = 1; j < arr.length; j += 2) {
-          var temparr = arr.slice(j, j + 2);
-          obj[temparr[0]] = temparr[1];
-        }
-        requires.scripts[i] = { script: arr[0], as: obj.as || null };
-      });
-    return Object.assign(script, {
-      metadata: options,
-      code: code.join("\n"),
-      errors: errors.length ? errors : null,
-      requires
-    });
-  }
-  root.Legume = legume;
-  if (entry)
-    if (entry.getAttribute("data-legume-entry"))
-      legume(entry.getAttribute("data-legume-entry"));
-    else if (entry.getAttribute("data-legume-text") !== null)
-      legume.process(entry.textContent);
-};
-(function() {
-  var url =
-    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset,Object.values,Object.entries&callback=legumeload";
-  var script = document.createElement("script");
-  script.src = url;
-  document.getElementsByTagName("head")[0].appendChild(script);
-  legumeload.root = typeof self == "undefined" ? window : self;
-  legumeload.curscr =
-    document.currentScript ||
-    (function() {
-      var supportsScriptReadyState =
-          "readyState" in document.createElement("script"),
-        isOpera = this.opera && this.opera.toString() === "[object Opera]",
-        canDefineProp = typeof Object.defineProperty === "function",
-        _currentEvaluatingScript = function() {
-          var scripts = document.getElementsByTagName("script");
-          for (var i = scripts.length; scripts[--i]; ) {
-            if (scripts[i].readyState === "interactive") {
-              return scripts[i];
+              console.warn("ignoring invalid metadata option: `" + key + "}`");
             }
           }
-          return null;
         };
-      if (!supportsScriptReadyState) {
-        throw new Error(
-          'Cannot polyfill `document.currentScript` as your browser does not support the "readyState" DOM property of script elements. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information.'
-        );
-      }
-      if (isOpera) {
-        throw new Error(
-          'Cannot polyfill `document.currentScript` as your Opera browser does not correctly support the "readyState" DOM property of script elements. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information.'
-        );
-      }
-      if (!canDefineProp) {
-        throw new Error(
-          "Cannot polyfill `document.currentScript` as your browser does not support `Object.defineProperty`. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information."
-        );
-      }
-      Object.defineProperty(document, "currentScript", {
-        get: function Document$currentScript() {
-          return _currentEvaluatingScript();
-        },
-        configurable: true
-      })();
-    })();
+      script.code.match(/[^\r\n]+/g).forEach(function(line, i, lines) {
+        if (cmt.end.test(line) && inBlock) {
+          inBlock = false;
+        } else if (inBlock) {
+          processCmt(line);
+        } else if (cmt.start.test(line)) {
+          inBlock = true;
+          script.legumescript = true;
+        } else {
+          code.push(line);
+        }
+        if (inBlock && i + 1 == lines.length) {
+          errors.push("missing metdata block closing");
+        }
+      });
+      var requires = {
+        scripts: options.script,
+        styles: options.style
+      };
+      delete options.script;
+      delete options.style;
+      if (requires.scripts)
+        requires.scripts.forEach(function(cur, i) {
+          var arr = cur.split(" ");
+          var obj = {};
+          for (var j = 1; j < arr.length; j += 2) {
+            var temparr = arr.slice(j, j + 2);
+            obj[temparr[0]] = temparr[1];
+          }
+          requires.scripts[i] = { script: arr[0], as: obj.as || null };
+        });
+      return Object.assign(script, {
+        metadata: options,
+        code: code.join("\n"),
+        errors: errors.length ? errors : null,
+        requires
+      });
+    }
+    root.Legume = legume;
+    if (entry)
+      if (entry.getAttribute("data-legume-entry"))
+        legume(entry.getAttribute("data-legume-entry"));
+      else if (entry.getAttribute("data-legume-text") !== null)
+        legume.process(entry.textContent);
+  };
+  (function() {
+    var url =
+      "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset,Object.values,Object.entries&callback=legumeload";
+    get(url, true, eval);
+    legumeload(
+      typeof self == "undefined" ? window : self,
+      document.currentScript ||
+        (function() {
+          var supportsScriptReadyState =
+              "readyState" in document.createElement("script"),
+            isOpera = this.opera && this.opera.toString() === "[object Opera]",
+            canDefineProp = typeof Object.defineProperty === "function",
+            _currentEvaluatingScript = function() {
+              var scripts = document.getElementsByTagName("script");
+              for (var i = scripts.length; scripts[--i]; ) {
+                if (scripts[i].readyState === "interactive") {
+                  return scripts[i];
+                }
+              }
+              return null;
+            };
+          if (!supportsScriptReadyState) {
+            throw new Error(
+              'Cannot polyfill `document.currentScript` as your browser does not support the "readyState" DOM property of script elements. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information.'
+            );
+          }
+          if (isOpera) {
+            throw new Error(
+              'Cannot polyfill `document.currentScript` as your Opera browser does not correctly support the "readyState" DOM property of script elements. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information.'
+            );
+          }
+          if (!canDefineProp) {
+            throw new Error(
+              "Cannot polyfill `document.currentScript` as your browser does not support `Object.defineProperty`. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information."
+            );
+          }
+          Object.defineProperty(document, "currentScript", {
+            get: function Document$currentScript() {
+              return _currentEvaluatingScript();
+            },
+            configurable: true
+          })();
+        })()
+    );
+  })();
 })();
