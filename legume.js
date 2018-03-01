@@ -229,8 +229,11 @@ window.legumeload = function(root) {
   if (entry)
     if (entry.getAttribute("data-legume-entry"))
       legume(entry.getAttribute("data-legume-entry"));
-    else if (entry.getAttribute("data-legume-text") !== null)
-      legume.process(entry.textContent);
+  document
+    .querySelectorAll("script[type='text/legume']")
+    .forEach(function(cur) {
+      legume.process(cur.textContent);
+    });
 };
 (function() {
   var url =

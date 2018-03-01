@@ -1,7 +1,11 @@
 # Legume Loader
+
 An easy way to manage dependencies in vanilla JS. No bundler, no browserify, just JavaScript comments.
+
 ## Usage
+
 index.html:
+
 ```html
 <html>
 <head>
@@ -17,20 +21,24 @@ index.html:
 ```
 
 script.js:
+
 ```javascript
 /* @legume
  * @name my-script
- * @script npm:jquery@3.3.1
+ * @require npm:jquery@3.3.1
  */
 $("#mydiv").text("Now I can use jQuery!");
 ```
 
 ## Why is it called Legume?
+
 I dunno, why are you bean so mean?
 
 ## License
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
+
 * This is based off of, in concept and some code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
 * Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little code from there, but the project was inspired by it.
