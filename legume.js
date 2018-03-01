@@ -122,21 +122,24 @@ window.legumeload = function(root) {
       }
       var code = mod.code + (mod.url ? "\n//# sourceURL=" + mod.url : "");
       if (mod.legumescript) {
-        eval(
-          "with(Legume.global)(" +
-            Function.apply(null, passargs.concat([code])).toString() +
-            ")"
-        ).apply(
-          legume.global,
-          passargs.reduce(function(arr, cur) {
-            arr.push(possargs[cur]);
-            return arr;
-          }, [])
-        );
+        eval
+          .call(
+            window,
+            "with(Legume.global)(" +
+              Function.apply(null, passargs.concat([code])).toString() +
+              ")"
+          )
+          .apply(
+            legume.global,
+            passargs.reduce(function(arr, cur) {
+              arr.push(possargs[cur]);
+              return arr;
+            }, [])
+          );
         legume.cache[mod.name] = possargs.module.exports;
         return possargs.module.exports;
       } else {
-        return eval(code);
+        return eval.call(window, code);
       }
     }
   }
@@ -155,7 +158,7 @@ window.legumeload = function(root) {
         email: "",
         url: "",
         license: "",
-        script: [],
+        require: [],
         style: []
       },
       options = {},
@@ -200,7 +203,7 @@ window.legumeload = function(root) {
       }
     });
     var requires = {
-      scripts: options.script,
+      scripts: options.require,
       styles: options.style
     };
     delete options.script;
