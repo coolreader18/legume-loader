@@ -10,30 +10,35 @@ window.legumeload = function(root) {
         inurl = new URL(inurl, location.href);
       }
     }
-    var ret = {};
-    var methods = ["github", "npm"];
-    for (var i = 0; i < methods.length; i++) {
-      var cur = methods[i];
-      if (inurl.protocol == cur + ":") {
+    var ret = { url: inurl };
+    var methods = {
+      github: function() {
+        var nv = inurl.pathname.split("/")[1];
         return {
-          url: new URL(
-            "https://cdn.jsdelivr.net/" +
-              (cur == "github" ? "gh" : cur) +
-              "/" +
-              inurl.pathname
-          ),
-          name: inurl.pathname
-            .split("/")
-            [cur == "github" ? 1 : 0].split("@")[0],
-          version:
-            inurl.pathname.split("/")[cur == "github" ? 1 : 0].split("@")[1] ||
-            "latest",
-          method: cur,
-          legumescript: cur == "npm" ? true : undefined
+          url: new URL("https://cdn.jsdelivr.net/gh/" + inurl.pathname),
+          name: nv.split("@")[0],
+          version: nv.split("@")[1] || "latest"
+        };
+      },
+      npm: function() {
+        var nv = inurl.pathname.split("/")[0];
+        return {
+          url: new URL("https://cdn.jsdelivr.net/npm/" + inurl.pathname),
+          name: nv.split("@")[0],
+          version: nv.split("@")[1] || "latest",
+          legumescript: true
         };
       }
+    };
+    var protocol = inurl.protocol.split(":")[0]
+    if (protocol in methods) {
+      Object.assign(ret, methods[protocol]());
+    } else {
+      Object.assign(ret, {
+        name: inurl.pathname.split("/").slice(-1)[0].split(".")[0]
+      })
     }
-    return { url: inurl };
+    return ret;
   }
   var legume = Object.assign(
     function legume(input, dontload) {
