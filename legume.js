@@ -10,7 +10,7 @@ window.legumeload = function(root) {
         inurl = new URL(inurl, location.href);
       }
     }
-    var ret = { url: inurl };
+    var ret = { url: inurl, originalUrl: inurl };
     var split = inurl.pathname.split("/");
     var methods = {
       github: function() {
@@ -58,6 +58,16 @@ window.legumeload = function(root) {
     function legume(input, dontload) {
       var output = {};
       Object.assign(output, parseURL(input));
+      var cached = Object.values(legume.scripts).find(function(cur) {
+        return (
+          cur.url &&
+          (cur.url.href == output.url.href ||
+            cur.originalUrl.href == output.originalUrl.href)
+        );
+      });
+      if (cached) {
+        return Promise.resolve(require(cached.name));
+      }
       return Promise.resolve()
         .then(function() {
           if (output.method == "gist") {
