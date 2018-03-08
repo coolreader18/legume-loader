@@ -11,9 +11,10 @@ window.legumeload = function(root) {
       }
     }
     var ret = { url: inurl };
+    var split = inurl.pathname.split("/");
     var methods = {
       github: function() {
-        var nv = inurl.pathname.split("/")[1];
+        var nv = split[1];
         return {
           url: new URL("https://cdn.jsdelivr.net/gh/" + inurl.pathname),
           name: nv.split("@")[0],
@@ -21,22 +22,35 @@ window.legumeload = function(root) {
         };
       },
       npm: function() {
-        var nv = inurl.pathname.split("/")[0];
+        var nv = split[0];
         return {
           url: new URL("https://cdn.jsdelivr.net/npm/" + inurl.pathname),
           name: nv.split("@")[0],
           version: nv.split("@")[1] || "latest",
           legumescript: true
         };
+      },
+      gist: function() {
+        return {
+          name: split[1].split(".")[0],
+          gist: {
+            id: split[0],
+            file: split[1]
+          }
+        };
       }
     };
-    var protocol = inurl.protocol.split(":")[0]
+    var protocol = inurl.protocol.split(":")[0];
+    ret.method = protocol;
     if (protocol in methods) {
       Object.assign(ret, methods[protocol]());
     } else {
       Object.assign(ret, {
-        name: inurl.pathname.split("/").slice(-1)[0].split(".")[0]
-      })
+        name: inurl.pathname
+          .split("/")
+          .slice(-1)[0]
+          .split(".")[0]
+      });
     }
     return ret;
   }
@@ -44,16 +58,35 @@ window.legumeload = function(root) {
     function legume(input, dontload) {
       var output = {};
       Object.assign(output, parseURL(input));
-      return legume.scripts[output.name]
-        ? require(output.name)
-        : fetch(output.url)
-            .then(function(r) {
-              return r.text();
-            })
-            .then(function(code) {
-              output.code = code;
-              return legume.process(output, dontload);
-            });
+      return Promise.resolve()
+        .then(function() {
+          if (output.method == "gist") {
+            return fetch("https://api.github.com/gists/" + output.gist.id);
+          }
+        })
+        .then(function(res) {
+          if (res) return res.json();
+        })
+        .then(function(res) {
+          if (res) {
+            var gistfile = res.files[output.gist.file];
+            if (!gistfile) throw new Error("File not in gist");
+            output.url = new URL(gistfile.raw_url);
+            if (!gistfile.truncated) output.code = gistfile.content;
+          }
+          return legume.scripts[output.name]
+            ? require(output.name)
+            : "code" in output
+              ? legume.process(output, dontload)
+              : fetch(output.url)
+                  .then(function(r) {
+                    return r.text();
+                  })
+                  .then(function(code) {
+                    output.code = code;
+                    return legume.process(output, dontload);
+                  });
+        });
     },
     {
       version: "dev",
