@@ -115,7 +115,7 @@ window.legumeload = function(root) {
       },
       process(scriptobj, dontload) {
         if (typeof scriptobj == "string") scriptobj = { code: scriptobj };
-        parse(scriptobj);
+        scriptobj = parse(scriptobj);
         scriptobj.name = scriptobj.name || scriptobj.metadata.name;
         if (legume.scripts[scriptobj.name])
           if (!dontload) {
@@ -206,6 +206,7 @@ window.legumeload = function(root) {
         email: "",
         url: "",
         license: "",
+        bookmarklet: false,
         require: [],
         style: []
       },
@@ -266,12 +267,21 @@ window.legumeload = function(root) {
         }
         requires.scripts[i] = { script: arr[0], as: obj.as || null };
       });
-    return Object.assign(script, {
-      metadata: options,
-      code: code.join("\n"),
-      errors: errors.length ? errors : null,
-      requires
-    });
+    var moves = ["bookmarklet"].reduce(function(obj, cur) {
+      obj[cur] = md[cur];
+      delete md[cur];
+      return obj;
+    }, {});
+    return Object.assign(
+      {
+        metadata: options,
+        code: code.join("\n"),
+        errors: errors.length ? errors : null,
+        requires
+      },
+      moveds,
+      script
+    );
   }
   root.Legume = legume;
   if (entry)
