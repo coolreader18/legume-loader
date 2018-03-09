@@ -2,13 +2,13 @@ window.legumeload = function(root) {
   var entry = legumeload.curscr;
   var root = legumeload.root;
   delete window.legumeload;
-  function parseURL(inurl) {
+  function parseURL(inurl, ref) {
     try {
       inurl = new URL(inurl);
     } catch (err) {
       if (err.message == "Failed to construct 'URL': Invalid URL") {
-        inurl = new URL(inurl, location.href);
-      }
+        inurl = new URL(inurl, ref || location);
+      } else throw err;
     }
     var ret = { url: inurl, originalUrl: inurl };
     var split = inurl.pathname.split("/");
@@ -55,9 +55,10 @@ window.legumeload = function(root) {
     return ret;
   }
   var legume = Object.assign(
-    function legume(input, dontload) {
+    function legume(input, opts) {
+      var opts = opts || {};
       var output = {};
-      Object.assign(output, parseURL(input));
+      Object.assign(output, parseURL(input, opts.urlref));
       var cached = Object.values(legume.scripts).find(function(cur) {
         return (
           cur.url &&
@@ -68,35 +69,33 @@ window.legumeload = function(root) {
       if (cached) {
         return Promise.resolve(require(cached.name));
       }
-      return Promise.resolve()
-        .then(function() {
-          if (output.method == "gist") {
-            return fetch("https://api.github.com/gists/" + output.gist.id);
-          }
-        })
-        .then(function(res) {
-          if (res) return res.json();
-        })
-        .then(function(res) {
-          if (res) {
+      var prom = Promise.resolve();
+      if (output.method == "gist") {
+        prom = fetch("https://api.github.com/gists/" + output.gist.id)
+          .then(function(res) {
+            return res.json();
+          })
+          .then(function(res) {
             var gistfile = res.files[output.gist.file];
             if (!gistfile) throw new Error("File not in gist");
             output.url = new URL(gistfile.raw_url);
             if (!gistfile.truncated) output.code = gistfile.content;
-          }
-          return legume.scripts[output.name]
-            ? require(output.name)
-            : "code" in output
-              ? legume.process(output, dontload)
-              : fetch(output.url)
-                  .then(function(r) {
-                    return r.text();
-                  })
-                  .then(function(code) {
-                    output.code = code;
-                    return legume.process(output, dontload);
-                  });
-        });
+          });
+      }
+      return prom.then(function() {
+        return legume.scripts[output.name]
+          ? require(output.name)
+          : "code" in output
+            ? legume.process(output, opts.dontload)
+            : fetch(output.url)
+                .then(function(r) {
+                  return r.text();
+                })
+                .then(function(code) {
+                  output.code = code;
+                  return legume.process(output, opts.dontload);
+                });
+      });
     },
     {
       version: "dev",
@@ -104,8 +103,8 @@ window.legumeload = function(root) {
       cache: {},
       require: require,
       global: { require: require },
-      style: function style(stlurl) {
-        stlurl = parseURL(stlurl).url;
+      style: function style(stlurl, ref) {
+        stlurl = parseURL(stlurl, ref).url;
         document.head.appendChild(
           Object.assign(document.createElement("link"), {
             rel: "stylesheet",
@@ -113,7 +112,7 @@ window.legumeload = function(root) {
           })
         );
       },
-      process(scriptobj, dontload) {
+      process: function(scriptobj, dontload) {
         if (typeof scriptobj == "string") scriptobj = { code: scriptobj };
         scriptobj = parse(scriptobj);
         scriptobj.name = scriptobj.name || scriptobj.metadata.name;
@@ -124,12 +123,17 @@ window.legumeload = function(root) {
         legume.scripts[scriptobj.name] = scriptobj;
         var ret = Promise.resolve(),
           requires = scriptobj.requires;
-        if (requires.styles) requires.styles.forEach(legume.style);
+        if (requires.styles)
+          requires.styles.forEach(function(cur) {
+            legume.style(cur);
+          });
         if (requires.scripts)
           ret = ret.then(function() {
             return Promise.all(
               requires.scripts.reduce(function(arr, scr) {
-                arr.push(legume(scr.script, true));
+                arr.push(
+                  legume(scr.script, { dontload: true, urlref: scriptobj.url })
+                );
                 return arr;
               }, [])
             );
@@ -163,7 +167,7 @@ window.legumeload = function(root) {
       if (requires.scripts) {
         requires.scripts.forEach(function(cur) {
           if (cur.as && !Object.keys(possargs).includes(cur.as)) {
-            possargs[cur.as] = require(parseURL(cur.script).name);
+            possargs[cur.as] = require(parseURL(cur.script, mod.url).name);
             passargs.push(cur.as);
           }
         });
@@ -267,7 +271,7 @@ window.legumeload = function(root) {
         }
         requires.scripts[i] = { script: arr[0], as: obj.as || null };
       });
-    var moves = ["bookmarklet"].reduce(function(obj, cur) {
+    var moveds = ["bookmarklet"].reduce(function(obj, cur) {
       obj[cur] = md[cur];
       delete md[cur];
       return obj;
