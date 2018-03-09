@@ -288,14 +288,15 @@ window.legumeload = function(root) {
     );
   }
   root.Legume = legume;
-  if (entry)
-    if (entry.getAttribute("data-legume-entry"))
-      legume(entry.getAttribute("data-legume-entry"));
-  document
-    .querySelectorAll("script[type='text/legume']")
-    .forEach(function(cur) {
-      legume.process(cur.textContent);
-    });
+  var loadprom = Promise.resolve();
+  if (entry && entry.getAttribute("data-legume-entry"))
+    loadprom = legume(entry.getAttribute("data-legume-entry"));
+  Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
+    function(prom, cur) {
+      return prom.then(legume.process(cur.textContent));
+    },
+    loadprom
+  );
 };
 (function() {
   var url =
