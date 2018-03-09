@@ -1,8 +1,11 @@
 <script src=legume.js data-legume-entry=script.js></script>
 <script type=text/legume type=text/javascript>
 /* @legume
- * @require npm:jquery
+ * @name type=text/legume-script
  */
-console.log(require);
+console.log(
+  'inline script test, should return the require function from "type=inline-legume:text/legume-script"',
+  require
+);
 </script>
 <div class=valign-wrapper>hi</div>

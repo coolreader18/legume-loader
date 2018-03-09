@@ -172,7 +172,11 @@ window.legumeload = function(root) {
           }
         });
       }
-      var code = mod.code + (mod.url ? "\n//# sourceURL=" + mod.url : "");
+      var code =
+        mod.code +
+        (mod.url || mod.name
+          ? "\n//# sourceURL=" + (mod.url || "inline-legume:" + mod.name)
+          : "");
       if (mod.legumescript) {
         eval
           .call(
