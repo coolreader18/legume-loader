@@ -31,11 +31,13 @@ window.legumeload = function(root) {
         };
       },
       gist: function() {
+        var split0 = split[0].split("@");
         return {
           name: split[1].split(".")[0],
           gist: {
-            id: split[0],
-            file: split[1]
+            id: split0[0],
+            file: split[1],
+            hash: split0[1]
           }
         };
       }
@@ -71,7 +73,14 @@ window.legumeload = function(root) {
       }
       var prom = Promise.resolve();
       if (output.method == "gist") {
-        prom = fetch("https://api.github.com/gists/" + output.gist.id)
+        prom = prom
+          .then(
+            fetch(
+              "https://api.github.com/gists/" +
+                output.gist.id +
+                (output.gist.hash ? "/" + output.gist.hash : "")
+            )
+          )
           .then(function(res) {
             return res.json();
           })
