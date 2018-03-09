@@ -306,7 +306,11 @@ window.legumeload = function(root) {
     loadprom = legume(entry.getAttribute("data-legume-entry"));
   Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
     function(prom, cur) {
-      return prom.then(legume.process(cur.textContent));
+      function processfn() {
+        return legume.process(cur.textContent);
+      };
+      if (cur.getAttribute("async") === null) return (processfn(), prom);
+      else return prom.then(processfn);
     },
     loadprom
   );
