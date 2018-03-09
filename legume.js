@@ -71,26 +71,24 @@ window.legumeload = function(root) {
       if (cached) {
         return Promise.resolve(require(cached.name));
       }
-      var prom = Promise.resolve();
-      if (output.method == "gist") {
-        prom = prom
-          .then(
-            fetch(
+      var prom = Promise.resolve(
+        output.method == "gist"
+          ? (prom = fetch(
               "https://api.github.com/gists/" +
                 output.gist.id +
                 (output.gist.hash ? "/" + output.gist.hash : "")
             )
-          )
-          .then(function(res) {
-            return res.json();
-          })
-          .then(function(res) {
-            var gistfile = res.files[output.gist.file];
-            if (!gistfile) throw new Error("File not in gist");
-            output.url = new URL(gistfile.raw_url);
-            if (!gistfile.truncated) output.code = gistfile.content;
-          });
-      }
+              .then(function(res) {
+                return res.json();
+              })
+              .then(function(res) {
+                var gistfile = res.files[output.gist.file];
+                if (!gistfile) throw new Error("File not in gist");
+                output.url = new URL(gistfile.raw_url);
+                if (!gistfile.truncated) output.code = gistfile.content;
+              }))
+          : 0
+      );
       return prom.then(function() {
         return legume.scripts[output.name]
           ? require(output.name)
@@ -301,16 +299,19 @@ window.legumeload = function(root) {
     );
   }
   root.Legume = legume;
-  var loadprom = Promise.resolve();
-  if (entry && entry.getAttribute("data-legume-entry"))
-    loadprom = legume(entry.getAttribute("data-legume-entry"));
+  var loadprom =
+    entry && entry.getAttribute("data-legume-entry")
+      ? legume(entry.getAttribute("data-legume-entry"))
+      : Promise.resolve();
   Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
     function(prom, cur) {
       function processfn() {
         return legume.process(cur.textContent);
-      };
-      if (cur.getAttribute("async") === null) return (processfn(), prom);
-      else return prom.then(processfn);
+      }
+      if (cur.getAttribute("async") === null) {
+        processfn();
+      } else prom = prom.then(processfn);
+      return prom;
     },
     loadprom
   );
