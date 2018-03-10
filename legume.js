@@ -72,22 +72,29 @@ window.legumeload = function(root) {
         return Promise.resolve(require(cached.name));
       }
       var prom = Promise.resolve(
-        output.method == "gist"
-          ? (prom = fetch(
-              "https://api.github.com/gists/" +
-                output.gist.id +
-                (output.gist.hash ? "/" + output.gist.hash : "")
-            )
-              .then(function(res) {
-                return res.json();
-              })
-              .then(function(res) {
-                var gistfile = res.files[output.gist.file];
-                if (!gistfile) throw new Error("File not in gist");
-                output.url = new URL(gistfile.raw_url);
-                if (!gistfile.truncated) output.code = gistfile.content;
-              }))
-          : 0
+        output.method == "gist" &&
+          fetch(
+            "https://api.github.com/gists/" +
+              output.gist.id +
+              (output.gist.hash ? "/" + output.gist.hash : "")
+          )
+            .then(function(res) {
+              return res.json();
+            })
+            .then(function(res) {
+              var gistfile = res.files[output.gist.file];
+              if (!gistfile) throw new Error("File not in gist");
+              output.url = new URL(gistfile.raw_url);
+              if (gistfile.truncated)
+                return fetch(output.url)
+                  .then(function(res) {
+                    return res.text();
+                  })
+                  .then(function(code) {
+                    output.code = code;
+                  });
+              else output.code = gistfile.content;
+            })
       );
       return prom.then(function() {
         return legume.scripts[output.name]
