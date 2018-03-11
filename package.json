@@ -6,5 +6,8 @@
   "jsdelivr": "legume.min.js",
   "description": "🥜 A simple vanilla JS dependency manager.",
   "bugs": "https://github.com/coolreader18/legume-loader/issues",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+  	"build": "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map'"
+  }
 }
