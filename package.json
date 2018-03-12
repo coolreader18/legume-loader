@@ -8,6 +8,7 @@
   "bugs": "https://github.com/coolreader18/legume-loader/issues",
   "license": "MIT",
   "scripts": {
-  	"build": "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map'"
+    "build":
+      "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map'"
   }
 }

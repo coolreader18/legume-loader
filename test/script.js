@@ -9,7 +9,7 @@
  * @require gist:9d372c8604fb918a19e7d9647c863cb1/Replace-character.js
  */
 console.log(
-  '"hey" in the document should display in the lato font, stylesheet test'
+  'stylesheet test, "hey" in the document should display in the lato font'
 );
 console.log(
   'gist loading test, should return "foofoofooeeeeebarbarbarooo" or something:',
@@ -28,5 +28,8 @@ console.log(
     .legumetest()
 );
 monster.set("foo", "bar");
-console.log('should return "bar":', monster.get("foo"));
-require("other-module");
+console.log('a modules test, should return "bar":', monster.get("foo"));
+console.log(
+  'module.exports test, should return "baz"',
+  require("other-module")
+);
