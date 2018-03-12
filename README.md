@@ -41,4 +41,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 * This is based off of, in concept and some code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
-* Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little code from there, but the project was inspired by it.
+* Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little code from there, I think at this point just the code for iterating throught the lines of a script, but the project was inspired by it.
