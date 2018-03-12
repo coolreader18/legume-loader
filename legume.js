@@ -12,32 +12,31 @@ window.legumeload = function(root) {
     }
     var ret = { url: inurl, originalUrl: inurl };
     var split = inurl.pathname.split("/");
+    var nv0 = split[0].split("@");
     var methods = {
       github: function() {
-        var nv = split[1];
+        var nv = split[1].split("@");
         return {
           url: new URL("https://cdn.jsdelivr.net/gh/" + inurl.pathname),
-          name: nv.split("@")[0],
-          version: nv.split("@")[1] || "latest"
+          name: nv[0],
+          version: nv[1] || "latest"
         };
       },
       npm: function() {
-        var nv = split[0];
         return {
           url: new URL("https://cdn.jsdelivr.net/npm/" + inurl.pathname),
-          name: nv.split("@")[0],
-          version: nv.split("@")[1] || "latest",
+          name: nv0[0],
+          version: nv0[1] || "latest",
           legumescript: true
         };
       },
       gist: function() {
-        var split0 = split[0].split("@");
         return {
           name: split[1].split(".")[0],
           gist: {
-            id: split0[0],
+            id: nv0[0],
             file: split[1],
-            hash: split0[1]
+            hash: nv0[1]
           }
         };
       }
@@ -71,18 +70,19 @@ window.legumeload = function(root) {
       if (cached) {
         return Promise.resolve(require(cached.name));
       }
+      var gist = output.gist;
       var prom = Promise.resolve(
         output.method == "gist" &&
           fetch(
             "https://api.github.com/gists/" +
-              output.gist.id +
-              (output.gist.hash ? "/" + output.gist.hash : "")
+              gist.id +
+              (gist.hash ? "/" + gist.hash : "")
           )
             .then(function(res) {
               return res.json();
             })
             .then(function(res) {
-              var gistfile = res.files[output.gist.file];
+              var gistfile = res.files[gist.file];
               if (!gistfile) throw new Error("File not in gist");
               output.url = new URL(gistfile.raw_url);
               if (gistfile.truncated)
