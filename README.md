@@ -10,7 +10,7 @@ index.html:
 <html>
 <head>
   <script
-  src=https://cdn.jsdelivr.net/npm/legume-loader@latest/legume.min.js
+  src=https://cdn.jsdelivr.net/npm/legume-loader@0.2.4/legume.min.js
   data-legume-entry=script.js></script>
 </head>
 <body>
