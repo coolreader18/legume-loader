@@ -10,6 +10,6 @@
   "license": "MIT",
   "scripts": {
     "build":
-      "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map'"
+      "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map' && prettier legume.js --write"
   }
 }
