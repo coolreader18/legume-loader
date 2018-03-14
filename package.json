@@ -3,6 +3,7 @@
   "version": "0.2.4",
   "author": "coolreader18",
   "repository": "github:coolreader18/legume-loader",
+  "main": "legume.js",
   "jsdelivr": "legume.min.js",
   "description": "🥜 A simple vanilla JS dependency manager.",
   "bugs": "https://github.com/coolreader18/legume-loader/issues",
