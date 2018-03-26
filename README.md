@@ -27,6 +27,7 @@ script.js:
  * @name my-script
  * @require npm:jquery@3.3.1
  */
+const $ = require("jquery");
 $("#mydiv").text("Now I can use jQuery!");
 ```
 
