@@ -1,6 +1,6 @@
 {
   "name": "legume-loader",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "author": "coolreader18",
   "repository": "github:coolreader18/legume-loader",
   "main": "legume.js",
@@ -9,7 +9,6 @@
   "bugs": "https://github.com/coolreader18/legume-loader/issues",
   "license": "MIT",
   "scripts": {
-    "build":
-      "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map' && prettier legume.js --write"
+    "build": "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map' && prettier legume.js --write"
   }
 }
