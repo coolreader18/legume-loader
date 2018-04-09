@@ -1,7 +1,4 @@
-window.legumeload = function(root) {
-  var entry = legumeload.curscr;
-  var root = legumeload.root;
-  delete window.legumeload;
+(function(entry, root) {
   function parseURL(inurl, ref) {
     try {
       inurl = new URL(inurl);
@@ -55,12 +52,12 @@ window.legumeload = function(root) {
     }
     return ret;
   }
-  var legume = Object.assign(
-    function legume(input, opts) {
+  root.Legume = Object.assign(
+    function Legume(input, opts) {
       var opts = opts || {};
       var output = {};
       Object.assign(output, parseURL(input, opts.urlref));
-      var cached = Object.values(legume.scripts).find(function(cur) {
+      var cached = Object.values(Legume.scripts).find(function(cur) {
         return (
           cur.url &&
           (cur.url.href == output.url.href ||
@@ -93,21 +90,21 @@ window.legumeload = function(root) {
                   .then(function(code) {
                     output.code = code;
                   });
-              else output.code = gistfile.content;
+              output.code = gistfile.content;
             })
       );
       return prom.then(function() {
-        return legume.scripts[output.name]
+        return Legume.scripts[output.name]
           ? require(output.name)
           : "code" in output
-            ? legume.process(output, opts.dontload)
+            ? Legume.process(output, opts.dontload)
             : fetch(output.url)
                 .then(function(r) {
                   return r.text();
                 })
                 .then(function(code) {
                   output.code = code;
-                  return legume.process(output, opts.dontload);
+                  return Legume.process(output, opts.dontload);
                 });
       });
     },
@@ -130,23 +127,24 @@ window.legumeload = function(root) {
         if (typeof scriptobj == "string") scriptobj = { code: scriptobj };
         scriptobj = parse(scriptobj);
         scriptobj.name = scriptobj.name || scriptobj.metadata.name;
-        if (legume.scripts[scriptobj.name])
+        scriptobj.loads = 0;
+        if (Legume.scripts[scriptobj.name])
           if (!dontload) {
             return require(scriptobj.name);
           } else return;
-        legume.scripts[scriptobj.name] = scriptobj;
+        Legume.scripts[scriptobj.name] = scriptobj;
         var ret = Promise.resolve(),
           requires = scriptobj.requires;
         if (requires.styles)
           requires.styles.forEach(function(cur) {
-            legume.style(cur);
+            Legume.style(cur);
           });
         if (requires.scripts)
           ret = ret.then(function() {
             return Promise.all(
               requires.scripts.reduce(function(arr, scr) {
                 arr.push(
-                  legume(scr.script, { dontload: true, urlref: scriptobj.url })
+                  Legume(scr.script, { dontload: true, urlref: scriptobj.url })
                 );
                 return arr;
               }, [])
@@ -158,59 +156,69 @@ window.legumeload = function(root) {
       }
     }
   );
-  legume.global.global = legume.global;
+  Legume.global.global = Legume.global;
   function require(mod) {
-    mod = legume.scripts[mod];
-    if (mod) {
-      if (legume.cache[mod.name]) return legume.cache[mod.name];
-      var module = {
-        exports: {},
-        children: {},
-        require: function require(mod) {
-          this.children[mod] = legume.scripts[mod];
-          return require(mod);
+    mod =
+      Legume.scripts[mod] ||
+      Object.values(Legume.scripts).find(function(cur) {
+        return cur.metadata && cur.metadata.name == mod;
+      });
+    if (!mod) {
+      throw new Error("Module not loaded");
+    }
+    if (Legume.cache[mod.name] && !mod.bookmarklet)
+      return Legume.cache[mod.name];
+    mod.loads++;
+    var module = {
+      exports: {},
+      children: mod.children,
+      legumeInfo: {
+        loads: mod.loads
+      }
+    };
+    module.require = function require(mod) {
+      this.children[mod] = Legume.scripts[mod];
+      return require(mod);
+    }.bind(module);
+    var possargs = {
+      module: module,
+      require: module.require,
+      exports: module.exports
+    };
+    var passargs = ["module", "exports"];
+    var requires = mod.requires;
+    if (requires.scripts) {
+      requires.scripts.forEach(function(cur) {
+        if (cur.as && !Object.keys(possargs).includes(cur.as)) {
+          possargs[cur.as] = require(parseURL(cur.script, mod.url).name);
+          passargs.push(cur.as);
         }
-      };
-      var possargs = {
-        module: module,
-        require: module.require,
-        exports: module.exports
-      };
-      var passargs = ["module", "exports"];
-      var requires = mod.requires;
-      if (requires.scripts) {
-        requires.scripts.forEach(function(cur) {
-          if (cur.as && !Object.keys(possargs).includes(cur.as)) {
-            possargs[cur.as] = require(parseURL(cur.script, mod.url).name);
-            passargs.push(cur.as);
-          }
-        });
-      }
-      var code =
-        mod.code +
-        (mod.url || mod.name
-          ? "\n//# sourceURL=" + (mod.url || "inline-legume:" + mod.name)
-          : "");
-      if (mod.legumescript) {
-        eval
-          .call(
-            window,
-            "with(Legume.global)(" +
-              Function.apply(null, passargs.concat([code])).toString() +
-              ")"
-          )
-          .apply(
-            legume.global,
-            passargs.reduce(function(arr, cur) {
-              arr.push(possargs[cur]);
-              return arr;
-            }, [])
-          );
-        legume.cache[mod.name] = possargs.module.exports;
-        return possargs.module.exports;
-      } else {
-        return eval.call(window, code);
-      }
+      });
+    }
+    var code =
+      mod.code +
+      (mod.url || mod.name
+        ? "\n//# sourceURL=" + (mod.url || "inline-legume:" + mod.name)
+        : "");
+    if (mod.legumescript) {
+      eval
+        .call(
+          window,
+          "with(Legume.global)(" +
+            Function.apply(null, passargs.concat([code])).toString() +
+            ")"
+        )
+        .apply(
+          Legume.global,
+          passargs.reduce(function(arr, cur) {
+            arr.push(possargs[cur]);
+            return arr;
+          }, [])
+        );
+      Legume.cache[mod.name] = module.exports;
+      return possargs.module.exports;
+    } else {
+      return eval.call(window, code);
     }
   }
   function parse(script) {
@@ -290,8 +298,8 @@ window.legumeload = function(root) {
         requires.scripts[i] = { script: arr[0], as: obj.as || null };
       });
     var moveds = ["bookmarklet"].reduce(function(obj, cur) {
-      obj[cur] = md[cur];
-      delete md[cur];
+      obj[cur] = options[cur];
+      delete options[cur];
       return obj;
     }, {});
     return Object.assign(
@@ -305,15 +313,14 @@ window.legumeload = function(root) {
       script
     );
   }
-  root.Legume = legume;
   var loadprom =
     entry && entry.getAttribute("data-legume-entry")
-      ? legume(entry.getAttribute("data-legume-entry"))
+      ? Legume(entry.getAttribute("data-legume-entry"))
       : Promise.resolve();
   Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
     function(prom, cur) {
       function processfn() {
-        return legume.process(cur.textContent);
+        return Legume.process(cur.textContent);
       }
       if (cur.getAttribute("async") === null) {
         processfn();
@@ -322,50 +329,4 @@ window.legumeload = function(root) {
     },
     loadprom
   );
-};
-(function() {
-  var url =
-    "https://polyfill.io/v2/polyfill.min.js?features=default-3.6,fetch,Element.prototype.dataset,Object.values,Object.entries&callback=legumeload";
-  var script = document.createElement("script");
-  script.src = url;
-  document.getElementsByTagName("head")[0].appendChild(script);
-  legumeload.root = typeof self == "undefined" ? window : self;
-  legumeload.curscr =
-    document.currentScript ||
-    (function() {
-      var supportsScriptReadyState =
-          "readyState" in document.createElement("script"),
-        isOpera = this.opera && this.opera.toString() === "[object Opera]",
-        canDefineProp = typeof Object.defineProperty === "function",
-        _currentEvaluatingScript = function() {
-          var scripts = document.getElementsByTagName("script");
-          for (var i = scripts.length; scripts[--i]; ) {
-            if (scripts[i].readyState === "interactive") {
-              return scripts[i];
-            }
-          }
-          return null;
-        };
-      if (!supportsScriptReadyState) {
-        throw new Error(
-          'Cannot polyfill `document.currentScript` as your browser does not support the "readyState" DOM property of script elements. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information.'
-        );
-      }
-      if (isOpera) {
-        throw new Error(
-          'Cannot polyfill `document.currentScript` as your Opera browser does not correctly support the "readyState" DOM property of script elements. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information.'
-        );
-      }
-      if (!canDefineProp) {
-        throw new Error(
-          "Cannot polyfill `document.currentScript` as your browser does not support `Object.defineProperty`. Please see https://github.com/Financial-Times/polyfill-service/issues/952 for more information."
-        );
-      }
-      Object.defineProperty(document, "currentScript", {
-        get: function Document$currentScript() {
-          return _currentEvaluatingScript();
-        },
-        configurable: true
-      })();
-    })();
-})();
+})(document.currentScript, window);
