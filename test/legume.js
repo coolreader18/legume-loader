@@ -1,1 +1,1 @@
-../legume.js
+../build/legume.js

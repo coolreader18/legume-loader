@@ -9,6 +9,11 @@
   "bugs": "https://github.com/coolreader18/legume-loader/issues",
   "license": "MIT",
   "scripts": {
-    "build": "uglifyjs legume.js -o legume.min.js -m --source-map url='legume.min.js.map' && prettier legume.js --write"
+    "build": "npx rollup -c",
+    "watch": "npx rollup -cw"
+  },
+  "devDependencies": {
+    "rollup": "^0.58.2",
+    "rollup-plugin-uglify": "^3.0.0"
   }
 }
