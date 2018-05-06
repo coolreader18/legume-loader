@@ -1,9 +1,7 @@
 var Legume = (function (exports) {
   'use strict';
 
-  var scripts = {};
-  var cache = {};
-  function parseURL(inurl, ref) {
+  function parseURL(inurl, ref, URL) {
     try {
       inurl = new URL(inurl);
     } catch (err) {
@@ -56,10 +54,13 @@ var Legume = (function (exports) {
     }
     return ret;
   }
+
+  var scripts = {};
+  var cache = {};
   function Legume(input, opts) {
     var opts = opts || {};
     var output = {};
-    Object.assign(output, parseURL(input, opts.urlref));
+    Object.assign(output, parseURL(input, opts.urlref, URL));
     var cached = Object.values(Legume.scripts).find(function(cur) {
       return (
         cur.url &&
@@ -85,6 +86,7 @@ var Legume = (function (exports) {
             var gistfile = res.files[gist.file];
             if (!gistfile) throw new Error("File not in gist");
             output.url = new URL(gistfile.raw_url);
+            output.url.hostname = "cdn.rawgit.com";
             if (gistfile.truncated)
               return fetch(output.url)
                 .then(function(res) {
@@ -112,7 +114,7 @@ var Legume = (function (exports) {
     });
   }
   function style(stlurl, ref) {
-    stlurl = parseURL(stlurl, ref).url;
+    stlurl = parseURL(stlurl, ref, URL).url;
     document.head.appendChild(
       Object.assign(document.createElement("link"), {
         rel: "stylesheet",
@@ -183,7 +185,7 @@ var Legume = (function (exports) {
     if (requires.scripts) {
       requires.scripts.forEach(function(cur) {
         if (cur.as && !Object.keys(possargs).includes(cur.as)) {
-          possargs[cur.as] = require(parseURL(cur.script, mod.url).name);
+          possargs[cur.as] = require(parseURL(cur.script, mod.url, URL).name);
           passargs.push(cur.as);
         }
       });
@@ -194,20 +196,13 @@ var Legume = (function (exports) {
         ? "\n//# sourceURL=" + (mod.url || "inline-legume:" + mod.name)
         : "");
     if (mod.legumescript) {
-      eval
-        .call(
-          window,
-          "with(Legume.global)(" +
-            Function.apply(null, passargs.concat([code])).toString() +
-            ")"
-        )
-        .apply(
-          Legume.global,
-          passargs.reduce(function(arr, cur) {
-            arr.push(possargs[cur]);
-            return arr;
-          }, [])
-        );
+      Function.apply(null, passargs.concat([code])).apply(
+        window,
+        passargs.reduce(function(arr, cur) {
+          arr.push(possargs[cur]);
+          return arr;
+        }, [])
+      );
       Legume.cache[mod.name] = module.exports;
       return possargs.module.exports;
     } else {

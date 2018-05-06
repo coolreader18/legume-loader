@@ -8,6 +8,7 @@
   "description": "🥜 A simple vanilla JS dependency manager.",
   "bugs": "https://github.com/coolreader18/legume-loader/issues",
   "license": "MIT",
+  "bin": "build/cli.js",
   "scripts": {
     "build": "npx rollup -c",
     "watch": "npx rollup -cw"
@@ -15,5 +16,11 @@
   "devDependencies": {
     "rollup": "^0.58.2",
     "rollup-plugin-uglify": "^3.0.0"
+  },
+  "dependencies": {
+    "find-npm-prefix": "^1.0.2",
+    "semver": "^5.5.0",
+    "yargs": "^11.0.0",
+    "got": "^8.3.0"
   }
 }

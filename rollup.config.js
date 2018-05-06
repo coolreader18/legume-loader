@@ -10,4 +10,15 @@ const config = (suffix, plugins) => ({
   plugins
 });
 
-export default [config("", []), config(".min", [uglify()])];
+export default [
+  config("", []),
+  config(".min", [uglify()]),
+  {
+    input: "src/cli.js",
+    output: {
+      format: "cjs",
+      file: "build/cli.js",
+      banner: "#!/usr/bin/env node"
+    }
+  }
+];

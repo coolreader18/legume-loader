@@ -1,63 +1,11 @@
 var version = "dev";
 var scripts = {};
 var cache = {};
-function parseURL(inurl, ref) {
-  try {
-    inurl = new URL(inurl);
-  } catch (err) {
-    if (err.message == "Failed to construct 'URL': Invalid URL") {
-      inurl = new URL(inurl, ref || location);
-    } else throw err;
-  }
-  var ret = { url: inurl, originalUrl: inurl };
-  var split = inurl.pathname.split("/");
-  var nv0 = split[0].split("@");
-  var methods = {
-    github: function() {
-      var nv = split[1].split("@");
-      return {
-        url: new URL("https://cdn.jsdelivr.net/gh/" + inurl.pathname),
-        name: nv[0],
-        version: nv[1] || "latest"
-      };
-    },
-    npm: function() {
-      return {
-        url: new URL("https://cdn.jsdelivr.net/npm/" + inurl.pathname),
-        name: nv0[0],
-        version: nv0[1] || "latest",
-        legumescript: true
-      };
-    },
-    gist: function() {
-      return {
-        name: split[1].split(".")[0],
-        gist: {
-          id: nv0[0],
-          file: split[1],
-          hash: nv0[1]
-        }
-      };
-    }
-  };
-  var protocol = inurl.protocol.split(":")[0];
-  ret.method = protocol;
-  if (protocol in methods) {
-    Object.assign(ret, methods[protocol]());
-  } else {
-    Object.assign(ret, {
-      name: inurl.pathname
-        .split("/")
-        .slice(-1)[0]
-        .split(".")[0]
-    });
-  }
-  return ret;
-}
+import parseURL from "./parse-url.js";
 function Legume(input, opts) {
   var opts = opts || {};
   var output = {};
-  Object.assign(output, parseURL(input, opts.urlref));
+  Object.assign(output, parseURL(input, opts.urlref, URL));
   var cached = Object.values(Legume.scripts).find(function(cur) {
     return (
       cur.url &&
@@ -83,6 +31,7 @@ function Legume(input, opts) {
           var gistfile = res.files[gist.file];
           if (!gistfile) throw new Error("File not in gist");
           output.url = new URL(gistfile.raw_url);
+          output.url.hostname = "cdn.rawgit.com";
           if (gistfile.truncated)
             return fetch(output.url)
               .then(function(res) {
@@ -110,7 +59,7 @@ function Legume(input, opts) {
   });
 }
 function style(stlurl, ref) {
-  stlurl = parseURL(stlurl, ref).url;
+  stlurl = parseURL(stlurl, ref, URL).url;
   document.head.appendChild(
     Object.assign(document.createElement("link"), {
       rel: "stylesheet",
@@ -181,7 +130,7 @@ function require(mod) {
   if (requires.scripts) {
     requires.scripts.forEach(function(cur) {
       if (cur.as && !Object.keys(possargs).includes(cur.as)) {
-        possargs[cur.as] = require(parseURL(cur.script, mod.url).name);
+        possargs[cur.as] = require(parseURL(cur.script, mod.url, URL).name);
         passargs.push(cur.as);
       }
     });
