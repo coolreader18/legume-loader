@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "es2017"],
+    "esModuleInterop": true,
+    "module": "es2015"
+  }
+}

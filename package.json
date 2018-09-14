@@ -10,17 +10,19 @@
   "license": "MIT",
   "bin": "build/cli.js",
   "scripts": {
-    "build": "npx rollup -c",
-    "watch": "npx rollup -cw"
+    "build": "rollup -c",
+    "watch": "rollup -cw"
   },
   "devDependencies": {
     "rollup": "^0.58.2",
-    "rollup-plugin-uglify": "^3.0.0"
+    "rollup-plugin-typescript2": "^0.16.1",
+    "rollup-plugin-uglify": "^3.0.0",
+    "typescript": "^3.0.1"
   },
   "dependencies": {
     "find-npm-prefix": "^1.0.2",
+    "got": "^8.3.0",
     "semver": "^5.5.0",
-    "yargs": "^11.0.0",
-    "got": "^8.3.0"
+    "yargs": "^11.0.0"
   }
 }

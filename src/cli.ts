@@ -1,4 +1,4 @@
-const { URL } = require("url");
+({ URL } = require("url"));
 const semver = require("semver");
 const findPrefix = require("find-npm-prefix");
 const fs = require("fs");
@@ -37,7 +37,7 @@ require("yargs").command(
       versions,
       (pkg.engines && pkg.engines["legume-loader"]) || "*"
     );
-    url = parseURL(url, null, URL);
+    url = parseURL(url, null);
     if (url.gist) {
       const { gist } = url;
       const gistfile = (await got(
