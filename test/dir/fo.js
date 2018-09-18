@@ -1,7 +1,7 @@
-/* @legume
- * @name fo
- * @require npm:jquery
- */
-require("jquery").fn.legumetest = function() {
+import $ from "npm:jquery";
+
+$.fn.legumetest = function() {
   return this[0].innerHTML;
 };
+
+exports.default = 9;

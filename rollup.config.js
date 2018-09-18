@@ -13,13 +13,13 @@ const config = (suffix = "", ...plugins) => ({
 
 export default [
   config(),
-  config(".min", uglify()),
-  {
-    input: "src/cli.js",
-    output: {
-      format: "cjs",
-      file: "build/cli.js",
-      banner: "#!/usr/bin/env node"
-    }
-  }
+  config(".min", uglify())
+  // ,{
+  //   input: "src/cli.js",
+  //   output: {
+  //     format: "cjs",
+  //     file: "build/cli.js",
+  //     banner: "#!/usr/bin/env node"
+  //   }
+  // }
 ];

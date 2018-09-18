@@ -1,5 +1,3 @@
-/* @legume
- * @name legume-jq
- * @require fo.js
- */
-module.exports = require("fo");
+import fo from "./fo.js";
+
+module.exports = fo;

@@ -1,7 +1,4 @@
-/* @legume
- * @name other-module
- * @require npm:jquery as foo
- */
+import foo from "npm:jquery";
 console.log(
   "@require as keyword test, should return the jquery function:",
   foo
