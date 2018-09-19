@@ -159,10 +159,15 @@ namespace Legume {
         const passedArgs = {
           module: cjsMod,
           exports: cjsMod.exports,
-          require: cjsMod.require
+          require: cjsMod.require,
+          Legume
         };
         mod.id.includes("script") && console.log(code);
-        Function.apply(0, Object.keys(passedArgs).concat(code)).apply(
+        const modFunc = Function.apply(
+          undefined,
+          Object.keys(passedArgs).concat(code)
+        );
+        modFunc.apply(
           window,
           Object.keys(passedArgs).map(cur => passedArgs[cur])
         );
