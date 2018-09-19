@@ -20,8 +20,7 @@ async function Legume(
 
 async function Legume(input: string, { urlRef, run = null }: LegumeOpts = {}) {
   const url = parseUrl(input, urlRef);
-  const { newUrl, content, type } = await Legume.fetch(url);
-  if (newUrl) url.absUrl = newUrl;
+  const { content, type } = await Legume.fetch(url);
   const id = url.absUrl!.href;
 
   await Legume.load(content, { id, type, url });
@@ -39,7 +38,7 @@ namespace Legume {
 
   export interface ModuleInput {
     url?: LegumeUrl;
-    code: string;
+    content: string;
     deps: string[];
     type: MediaType;
     id: string;
@@ -53,9 +52,18 @@ namespace Legume {
     url?: LegumeUrl;
   }
   export async function load(input: string, { id, url, type }: LoadOpts) {
-    const importsResult = await Legume.parseImports(input, {
-      mapId: modId => parseUrl(modId).absUrl.href
-    });
+    let importsResult: parse.Parsed = {
+      content: input,
+      deps: [],
+      hadImports: false
+    };
+    switch (type) {
+      case "script":
+        importsResult = Legume.parseImports(input, {
+          mapId: modId => parseUrl(modId, url).absUrl.href
+        });
+        break;
+    }
     const mod = new Module({
       ...importsResult,
       type,
@@ -63,46 +71,30 @@ namespace Legume {
       url
     });
     Legume.cache[id] = mod;
-
-    await Promise.all(
-      mod.deps.map(dep => Legume(dep, { urlRef: url, run: false }))
-    );
+    console.log(input);
+    if (mod.deps)
+      await Promise.all(
+        mod.deps.map(dep => Legume(dep, { urlRef: url, run: false }))
+      );
   }
   export class Module implements ModuleInput {
     constructor(mod: ModuleInput) {
       Object.assign(this, mod);
-      if (this.type === "unknown") {
-        url: if (this.url) {
-          const match = this.url.request.pathname.match(/\.(.*)$/);
-          if (!match) break url;
-          switch (match[1]) {
-            case "js":
-              this.type = "script";
-              break;
-            case "css":
-              this.type = "style";
-              break;
-            case "json":
-              this.type = "json";
-              break;
-            case "txt":
-            case "text":
-              this.type = "text";
-              break;
-          }
-        }
-        console.warn(`Media type could not be determined for ${this.id}`);
-      }
     }
     url?: LegumeUrl | undefined;
-    code: string;
+    content: string;
     deps: string[];
     type: MediaType;
     id: string;
     exports?: any;
     setDefaultExports() {
-      const exports: any = {};
-      if (this.hadImports) exports.__esModule = true;
+      let exports: any = undefined;
+      switch (this.type) {
+        case "script":
+          exports = {};
+          if (this.hadImports) exports.__esModule = true;
+          break;
+      }
       return (this.exports = exports);
     }
     hadImports: boolean;
@@ -117,7 +109,9 @@ namespace Legume {
           self.exports = exports;
         },
         legume: {
-          loads: this.loads
+          get loads() {
+            return self.loads;
+          }
         },
         require: (modId: string) => Legume.require(modId)
       };
@@ -148,12 +142,12 @@ namespace Legume {
   };
   export function run(modId: string) {
     const mod = getMod(modId);
-    const code = `${mod.code}\n//# sourceURL=${
-      mod.url ? mod.url.absUrl || mod.url.request : `legume:${mod.id}`
-    }`;
 
     switch (mod.type) {
       case "script":
+        const code = `${mod.content!}\n//# sourceURL=${
+          mod.url ? mod.url.absUrl || mod.url.request : `legume:${mod.id}`
+        }`;
         const cjsMod = mod.getCJSModule();
         const passedArgs = {
           module: cjsMod,
@@ -166,10 +160,17 @@ namespace Legume {
         );
         return mod.exports;
       case "style":
-        const elem = document.createElement("link");
-        elem.rel = "stylesheet";
-        elem.href = mod.url!.absUrl!.href;
-        document.head.appendChild(elem);
+        const elem = document.createElement("style");
+        elem.innerHTML = `/*# sourceUrl=${
+          mod.url ? mod.url.absUrl || mod.url.request : `legume:${mod.id}`
+        } */\n${mod.content}`;
+        if (mod.exports) {
+          const prev = mod.exports as HTMLStyleElement;
+          console.log(prev);
+          prev.parentNode!.replaceChild(elem, prev);
+        } else {
+          document.head.appendChild(elem);
+        }
         return elem;
     }
   }
@@ -180,11 +181,8 @@ namespace Legume {
   interface FetchResult {
     type: MediaType;
     content: string;
-    newUrl?: URL;
   }
   export async function fetch(url: LegumeUrl): Promise<FetchResult> {
-    let newUrl: URL | undefined = undefined;
-
     const res = await window.fetch(url.absUrl.href);
     const contentType = res.headers.get("Content-Type") || "unknown";
     const content = await res.text();
@@ -201,11 +199,29 @@ namespace Legume {
         type = "style";
         break;
       default:
+        const match = url.request.pathname.match(/\.(.*)$/);
+        if (match)
+          switch (match[1]) {
+            case "js":
+              this.type = "script";
+              break;
+            case "css":
+              this.type = "style";
+              break;
+            case "json":
+              this.type = "json";
+              break;
+            case "txt":
+            case "text":
+              this.type = "text";
+              break;
+          }
+        console.warn(`Media type could not be determined for ${url.absUrl}`);
         type = "unknown";
         break;
     }
 
-    return { content, type, newUrl };
+    return { content, type };
   }
 }
 
@@ -216,7 +232,7 @@ Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
   (prom, cur, i) => {
     const processfn = () =>
       Legume.load(cur.textContent || "", {
-        id: `document-script-${i}`,
+        id: `inline-script-${i}`,
         type: "script"
       });
 

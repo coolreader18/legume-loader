@@ -29,8 +29,8 @@ export interface ImportStatement {
   source: string;
 }
 
-interface Parsed {
-  code: string;
+export interface Parsed {
+  content: string;
   deps: string[];
   hadImports: boolean;
 }
@@ -43,17 +43,17 @@ interface ParseOptions {
  * Parse a script into its imports and exports
  * @param script - The script text to parse
  */
-export const parseImports = async (
+export const parseImports = (
   script: string,
   { mapId }: ParseOptions
-): Promise<Parsed> => {
+): Parsed => {
   const reg = /(^|;|\*\/)\s*import\s*((?:.|\r|\n)+?(?:"|'))(?=;|$)/gm;
 
   let hadImports = false;
 
   const deps: string[] = [];
 
-  const code = script.replace(reg, (_, prefix, match) => {
+  const content = script.replace(reg, (_, prefix, match) => {
     hadImports = true;
 
     const cur: ImportStatement = {
@@ -79,7 +79,7 @@ export const parseImports = async (
   });
 
   return {
-    code,
+    content,
     deps,
     hadImports
   };
