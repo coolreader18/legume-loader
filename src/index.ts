@@ -161,6 +161,7 @@ namespace Legume {
           exports: cjsMod.exports,
           require: cjsMod.require
         };
+        mod.id.includes("script") && console.log(code);
         Function.apply(0, Object.keys(passedArgs).concat(code)).apply(
           window,
           Object.keys(passedArgs).map(cur => passedArgs[cur])

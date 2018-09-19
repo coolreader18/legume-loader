@@ -37,35 +37,39 @@ export const parseScript = (
   script: string,
   { mapId }: ParseOptions
 ): Parsed => {
-  const reg = /(^|;|\*\/)\s*import\s*((?:.|\r|\n)+?(?:"|'))(?=;|$)/gm;
+  const reg = /(^|;|\*\/)\s*import\s*((?:.|\r|\n)+?(?:"|'))(?=;|$)|\b(import)(?=\s*\()/gm;
 
   let hadImports = false;
 
   const deps: string[] = [];
 
-  const content = script.replace(reg, (_, prefix, match) => {
-    hadImports = true;
+  const content = script.replace(reg, (_, prefix, match, dynamic) => {
+    if (!dynamic) {
+      hadImports = true;
 
-    const cur: ImportStatement = {
-      source: ""
-    };
+      const cur: ImportStatement = {
+        source: ""
+      };
 
-    ident: {
-      const ident = match.match(buildRegex(["^", identReg, restReg]));
-      if (!ident) break ident;
-      cur.defaultImport = ident[1];
-      match = ident[2];
+      ident: {
+        const ident = match.match(buildRegex(["^", identReg, restReg]));
+        if (!ident) break ident;
+        cur.defaultImport = ident[1];
+        match = ident[2];
+      }
+
+      if (match[0] === "*") [cur.nspImport, match] = parseNamespace(match);
+      else if (match[0] === "{") [cur.namedImports, match] = parseNamed(match);
+
+      cur.source = parseEnd(match);
+
+      deps.push(cur.source);
+      if (mapId) cur.source = mapId(cur.source);
+
+      return `${prefix}${transformDep(cur)}`;
+    } else {
+      return `(function(id){return Legume(id).then(${importStar})})`;
     }
-
-    if (match[0] === "*") [cur.nspImport, match] = parseNamespace(match);
-    else if (match[0] === "{") [cur.namedImports, match] = parseNamed(match);
-
-    cur.source = parseEnd(match);
-
-    deps.push(cur.source);
-    if (mapId) cur.source = mapId(cur.source);
-
-    return `${prefix}${transformDep(cur)}`;
   });
 
   return {

@@ -27,3 +27,7 @@ console.log(
 monster.set("foo", "bar");
 console.log('a modules test, should return "bar":', monster.get("foo"));
 console.log('module.exports test, should return "baz":', otherModule);
+
+import("./dir/dynamic.js").then(() => {
+  console.log("dynamic import test, should appear second");
+});
