@@ -4,6 +4,7 @@
     "lib": ["dom", "es2017"],
     "esModuleInterop": true,
     "module": "es2015",
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "moduleResolution": "node"
   }
 }

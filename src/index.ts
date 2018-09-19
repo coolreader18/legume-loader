@@ -1,5 +1,6 @@
 import parseUrl, { LegumeUrl } from "./parse-url";
-import * as parse from "./parse";
+import * as parse from "./parse/parse";
+import whenDOMReady from "./when-dom-ready";
 
 const hasOwnProp = <O extends { [k in PropertyKey]: any }, K extends keyof O>(
   obj: O,
@@ -59,7 +60,12 @@ namespace Legume {
     };
     switch (type) {
       case "script":
-        importsResult = Legume.parseImports(input, {
+        importsResult = Legume.parseScript(input, {
+          mapId: modId => parseUrl(modId, url).absUrl.href
+        });
+        break;
+      case "style":
+        importsResult = Legume.parseStyle(input, {
           mapId: modId => parseUrl(modId, url).absUrl.href
         });
         break;
@@ -71,7 +77,6 @@ namespace Legume {
       url
     });
     Legume.cache[id] = mod;
-    console.log(input);
     if (mod.deps)
       await Promise.all(
         mod.deps.map(dep => Legume(dep, { urlRef: url, run: false }))
@@ -143,11 +148,13 @@ namespace Legume {
   export function run(modId: string) {
     const mod = getMod(modId);
 
+    const sourceURL = mod.url
+      ? mod.url.absUrl || mod.url.request
+      : `legume:${mod.id}`;
+
     switch (mod.type) {
       case "script":
-        const code = `${mod.content!}\n//# sourceURL=${
-          mod.url ? mod.url.absUrl || mod.url.request : `legume:${mod.id}`
-        }`;
+        const code = `${mod.content!}\n//# sourceURL=${sourceURL}`;
         const cjsMod = mod.getCJSModule();
         const passedArgs = {
           module: cjsMod,
@@ -161,12 +168,9 @@ namespace Legume {
         return mod.exports;
       case "style":
         const elem = document.createElement("style");
-        elem.innerHTML = `/*# sourceUrl=${
-          mod.url ? mod.url.absUrl || mod.url.request : `legume:${mod.id}`
-        } */\n${mod.content}`;
+        elem.innerHTML = `${mod.content}\n/*# sourceUrl=${sourceURL} */`;
         if (mod.exports) {
           const prev = mod.exports as HTMLStyleElement;
-          console.log(prev);
           prev.parentNode!.replaceChild(elem, prev);
         } else {
           document.head.appendChild(elem);
@@ -175,7 +179,8 @@ namespace Legume {
     }
   }
 
-  export import parseImports = parse.parseImports;
+  export import parseScript = parse.parseScript;
+  export import parseStyle = parse.parseStyle;
 
   type MediaType = "script" | "style" | "json" | "text" | "unknown";
   interface FetchResult {
@@ -228,23 +233,29 @@ namespace Legume {
 const curScript = document.currentScript;
 const entry = curScript && curScript.getAttribute("data-legume-entry");
 
-Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
-  (prom, cur, i) => {
-    const processfn = () =>
-      Legume.load(cur.textContent || "", {
-        id: `inline-script-${i}`,
-        type: "script"
-      });
+whenDOMReady().then(() => {
+  Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
+    (prom, cur, i) => {
+      console.log("AAA");
+      const processfn = async () => {
+        const id = `inline-script-${i}`;
+        await Legume.load(cur.textContent || "", {
+          id,
+          type: "script"
+        });
+        Legume.run(id);
+      };
 
-    if (cur.getAttribute("async") === null) {
-      processfn();
-    } else {
-      prom = prom.then(processfn).then(console.error);
-    }
+      if (cur.getAttribute("async") === null) {
+        processfn();
+      } else {
+        prom = prom.then(processfn).then(console.error);
+      }
 
-    return prom;
-  },
-  entry ? Legume(entry).catch(console.error) : Promise.resolve()
-);
+      return prom;
+    },
+    entry ? Legume(entry).catch(console.error) : Promise.resolve()
+  );
+});
 
 export default Legume;

@@ -37,7 +37,7 @@ require("yargs").command(
       versions,
       (pkg.engines && pkg.engines["legume-loader"]) || "*"
     );
-    url = parseURL(url, null);
+    url = parseURL(url);
     if (url.gist) {
       const { gist } = url;
       const gistfile = (await got(

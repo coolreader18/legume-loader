@@ -1,8 +1,8 @@
+import { Parsed, ParseOptions } from "./parse";
+import { parseString } from "./common";
+
 const identReg = /([a-zA-Z_$][a-zA-Z_$0-9]*)/.source;
-const buildRegex = (
-  parts,
-  flags = "" //(parts: Array<string | RegExp>, flags?: string) =>
-) =>
+const buildRegex = (parts: Array<string | RegExp>, flags?: string) =>
   RegExp(
     parts.map(cur => (cur instanceof RegExp ? cur.source : cur)).join(""),
     flags
@@ -22,28 +22,18 @@ function importStar(mod) {
   return result;
 }
 
-export interface ImportStatement {
+interface ImportStatement {
   defaultImport?: string;
   namedImports?: NamedImport[];
   nspImport?: string;
   source: string;
 }
 
-export interface Parsed {
-  content: string;
-  deps: string[];
-  hadImports: boolean;
-}
-
-interface ParseOptions {
-  mapId: (modId: string) => string;
-}
-
 /**
  * Parse a script into its imports and exports
  * @param script - The script text to parse
  */
-export const parseImports = (
+export const parseScript = (
   script: string,
   { mapId }: ParseOptions
 ): Parsed => {
@@ -145,15 +135,9 @@ const parseNamed = (str: string): [NamedImport[], string] => {
 };
 
 const parseEnd = (str: string): string => {
-  const srcMatch = str.match(buildRegex([/(?:from)?\s*/, restReg]));
-  if (!srcMatch) throw new Error("Invalid end of import statement");
-  const source = srcMatch[1];
-  return JSON.parse(
-    source[0] === "'"
-      ? `"${source
-          .replace(/"/g, '\\"')
-          .replace(/\\'/g, "'")
-          .slice(1, -2)}"`
-      : source
+  const srcMatch = str.match(
+    /(?:from)?\s*("(?:[^\r\n"]|\\")*"|'(?:[^\r\n']|\\')*")/
   );
+  if (!srcMatch) throw new Error("Invalid end of import statement");
+  return parseString(srcMatch[1]);
 };

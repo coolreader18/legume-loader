@@ -8,26 +8,21 @@ index.html:
 
 ```html
 <html>
-<head>
-  <script
-  src=https://cdn.jsdelivr.net/npm/legume-loader@0.2.4/legume.min.js
-  data-legume-entry=script.js></script>
-</head>
-<body>
-  <div id=mydiv>
-  </div>
-</body>
+  <head>
+    <script
+    src=https://cdn.jsdelivr.net/npm/legume-loader@0.2.4/legume.min.js
+    data-legume-entry=script.js></script>
+  </head>
+  <body>
+    <div id=mydiv />
+  </body>
 </html>
 ```
 
 script.js:
 
 ```javascript
-/* @legume
- * @name my-script
- * @require npm:jquery@3.3.1
- */
-const $ = require("jquery");
+import $ from "npm:jquery";
 $("#mydiv").text("Now I can use jQuery!");
 ```
 
@@ -41,5 +36,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-* This is based off of, in concept and some code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
-* Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little code from there, I think at this point just the code for iterating throught the lines of a script, but the project was inspired by it.
+- This is based off of, in concept and some code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
+- Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little code from there, I think at this point just the code for iterating throught the lines of a script, but the project was inspired by it.
+- Some code taken from [lukechilds/when-dom-ready](https://github.com/lukechilds/when-dom-ready).

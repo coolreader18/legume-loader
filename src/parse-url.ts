@@ -21,7 +21,6 @@ const parseUrl = (inUrl: string, ref?: string | URL | LegumeUrl): LegumeUrl => {
     );
     relative = true;
   }
-  console.log(inUrl, origUrl, relative);
   const protocol = origUrl.protocol.slice(0, -1);
   let absUrl: URL;
   switch (protocol) {
