@@ -1,54 +1,50 @@
 export interface LegumeUrl {
-  absUrl?: URL;
+  absUrl: URL;
   request: URL;
   method: string;
   relative: boolean;
-  gist?: {
-    id: string;
-    file: string;
-  };
 }
 
-const parseUrl = (inUrl: string, ref?: string | URL): LegumeUrl => {
+const parseUrl = (inUrl: string, ref?: string | URL | LegumeUrl): LegumeUrl => {
   let origUrl: URL;
   let relative = false;
   try {
     origUrl = new URL(inUrl);
   } catch (err) {
-    origUrl = new URL(inUrl, ref || String(location));
+    origUrl = new URL(
+      inUrl,
+      ref
+        ? ref instanceof URL || typeof ref === "string"
+          ? ref
+          : ref.absUrl
+        : location.href
+    );
     relative = true;
   }
   const protocol = origUrl.protocol.slice(0, -1);
-  let url: Partial<LegumeUrl>;
+  let absUrl: URL;
   switch (protocol) {
     case "github":
-      url = {
-        absUrl: new URL("https://cdn.jsdelivr.net/gh/" + origUrl.pathname)
-      };
+      absUrl = new URL(`https://cdn.jsdelivr.net/gh/${origUrl.pathname}`);
       break;
     case "npm":
-      url = {
-        absUrl: new URL("https://cdn.jsdelivr.net/npm/" + origUrl.pathname)
-      };
+      absUrl = new URL(`https://cdn.jsdelivr.net/npm/${origUrl.pathname}`);
       break;
     case "gist":
       const split = origUrl.pathname.split("/");
-      url = {
-        gist: {
-          id: split[0],
-          file: split[1]
-        }
-      };
+      absUrl = new URL(
+        `https://cdn.rawgit.com/${split.slice(0, 2)}/raw/${origUrl.hash}${
+          split[2]
+        }`
+      );
       break;
     default:
-      url = {
-        absUrl: origUrl
-      };
+      absUrl = origUrl;
       break;
   }
 
   return {
-    ...url,
+    absUrl,
     relative,
     request: origUrl,
     method: protocol

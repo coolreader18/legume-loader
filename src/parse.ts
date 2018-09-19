@@ -36,7 +36,7 @@ interface Parsed {
 }
 
 interface ParseOptions {
-  mapId: (modId: string) => Promise<string>;
+  mapId: (modId: string) => string;
 }
 
 /**
@@ -51,17 +51,9 @@ export const parseImports = async (
 
   let hadImports = false;
 
-  const deps: ImportStatement[] = [];
+  const deps: string[] = [];
 
-  const out: Array<string | [string, ImportStatement]> = [];
-
-  let lastIndex: number = 0;
-
-  let execArr: RegExpExecArray;
-  while ((execArr = reg.exec(script)!)) {
-    const prefix = execArr[1];
-    let match = execArr[2];
-
+  const code = script.replace(reg, (_, prefix, match) => {
     hadImports = true;
 
     const cur: ImportStatement = {
@@ -69,7 +61,7 @@ export const parseImports = async (
     };
 
     ident: {
-      let ident = match.match(buildRegex(["^", identReg, restReg]));
+      const ident = match.match(buildRegex(["^", identReg, restReg]));
       if (!ident) break ident;
       cur.defaultImport = ident[1];
       match = ident[2];
@@ -80,23 +72,15 @@ export const parseImports = async (
 
     cur.source = parseEnd(match);
 
-    const { index } = execArr;
-    out.push(script.slice(lastIndex, index), [prefix, cur]);
-    lastIndex = index + execArr[0].length;
-  }
-  out.push(script.slice(lastIndex));
+    deps.push(cur.source);
+    if (mapId) cur.source = mapId(cur.source);
 
-  const code = await Promise.all(
-    out.map(async cur => {
-      if (typeof cur === "string") return cur;
-      const [prefix, imp] = cur;
-      imp.source = await mapId(imp.source);
-      return prefix + transformDep(imp);
-    })
-  );
+    return `${prefix}${transformDep(cur)}`;
+  });
+
   return {
-    code: code.join(""),
-    deps: deps.map(cur => cur.source),
+    code,
+    deps,
     hadImports
   };
 };
@@ -129,7 +113,7 @@ const transformDep = (dep: ImportStatement) => {
 };
 
 const parseNamespace = (str: string): [string, string] => {
-  let nspMatch = str.match(buildRegex(["^", nspImpComp, restReg]));
+  const nspMatch = str.match(buildRegex(["^", nspImpComp, restReg]));
 
   if (!nspMatch) throw new Error("Invalid namespace import statement");
   return [nspMatch[1], nspMatch[2]];
@@ -141,7 +125,7 @@ interface NamedImport {
 }
 
 const parseNamed = (str: string): [NamedImport[], string] => {
-  let initMatch = buildRegex(["{", restReg, "}", restReg]).exec(str);
+  const initMatch = buildRegex(["{", restReg, "}", restReg]).exec(str);
   if (!initMatch) throw new Error("Invalid named parameters.");
   str = initMatch[1];
 
@@ -153,15 +137,15 @@ const parseNamed = (str: string): [NamedImport[], string] => {
   const out: NamedImport[] = [];
 
   while ((match = reg.exec(str))) {
-    let imp = match[1];
-    let as = match[2];
+    const imp = match[1];
+    const as = match[2];
     out.push(as ? { imp, as } : { imp });
   }
   return [out, initMatch[2]];
 };
 
 const parseEnd = (str: string): string => {
-  let srcMatch = str.match(buildRegex([/(?:from)?\s*/, restReg]));
+  const srcMatch = str.match(buildRegex([/(?:from)?\s*/, restReg]));
   if (!srcMatch) throw new Error("Invalid end of import statement");
   const source = srcMatch[1];
   return JSON.parse(

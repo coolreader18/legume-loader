@@ -8,7 +8,7 @@ const hasOwnProp = <O extends { [k in PropertyKey]: any }, K extends keyof O>(
   Object.prototype.hasOwnProperty.call(obj, key);
 
 interface LegumeOpts<R extends boolean | null | undefined = boolean | null> {
-  urlRef?: string | URL;
+  urlRef?: string | URL | LegumeUrl;
   run?: R;
 }
 
@@ -54,11 +54,7 @@ namespace Legume {
   }
   export async function load(input: string, { id, url, type }: LoadOpts) {
     const importsResult = await Legume.parseImports(input, {
-      mapId: async modId =>
-        await Legume(modId, {
-          run: false,
-          urlRef: url && url.absUrl
-        })
+      mapId: modId => parseUrl(modId).absUrl.href
     });
     const mod = new Module({
       ...importsResult,
@@ -67,6 +63,10 @@ namespace Legume {
       url
     });
     Legume.cache[id] = mod;
+
+    await Promise.all(
+      mod.deps.map(dep => Legume(dep, { urlRef: url, run: false }))
+    );
   }
   export class Module implements ModuleInput {
     constructor(mod: ModuleInput) {
@@ -183,49 +183,12 @@ namespace Legume {
     newUrl?: URL;
   }
   export async function fetch(url: LegumeUrl): Promise<FetchResult> {
-    const setContent = async (input: URL) => {
-      const res = await window.fetch(input.href);
-      contentType = res.headers.get("Content-Type") || "unknown";
-      content = await res.text();
-    };
-
     let newUrl: URL | undefined = undefined;
-    let content!: string;
-    let contentType!: string;
 
-    if (url.method == "gist") {
-      interface Gist {
-        files: {
-          [filename: string]: {
-            raw_url: string;
-            truncated: boolean;
-            content: string;
-            type: string;
-          };
-        };
-      }
-      const {
-        gist,
-        request: { hash }
-      } = url;
-      let res: Gist = await window
-        .fetch(
-          `https://api.github.com/gists/${gist!.id}${hash ? "/" + hash : ""}`
-        )
-        .then(r => r.json());
+    const res = await window.fetch(url.absUrl.href);
+    const contentType = res.headers.get("Content-Type") || "unknown";
+    const content = await res.text();
 
-      let gistFile = res.files[gist!.file];
-      if (!gistFile) throw new Error("File not in gist");
-      newUrl = new URL(gistFile.raw_url);
-      newUrl.hostname = "cdn.rawgit.com";
-      if (gistFile.truncated) {
-        await setContent(newUrl);
-      } else {
-        ({ content, type: contentType } = gistFile);
-      }
-    } else {
-      await setContent(url.absUrl!);
-    }
     let type: MediaType;
     switch (contentType.split(";")[0]) {
       case "application/json":
