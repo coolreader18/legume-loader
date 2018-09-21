@@ -22,7 +22,7 @@ async function Legume(
 async function Legume(input: string, { urlRef, run = null }: LegumeOpts = {}) {
   const url = parseUrl(input, urlRef);
   const { content, type } = await Legume.fetch(url);
-  const id = url.absUrl!.href;
+  const id = url.absUrl.href;
 
   await Legume.load(content, { id, type, url });
   if (run == null) {
@@ -30,7 +30,7 @@ async function Legume(input: string, { urlRef, run = null }: LegumeOpts = {}) {
   } else if (run) {
     return Legume.run(id);
   } else {
-    return url.absUrl!.href;
+    return url.absUrl.href;
   }
 }
 
@@ -154,7 +154,7 @@ namespace Legume {
 
     switch (mod.type) {
       case "script":
-        const code = `${mod.content!}\n//# sourceURL=${sourceURL}`;
+        const code = `${mod.content}\n//# sourceURL=${sourceURL}`;
         const cjsMod = mod.getCJSModule();
         const passedArgs = {
           module: cjsMod,
