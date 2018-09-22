@@ -37,13 +37,13 @@ export const parseScript = (
   script: string,
   { mapId }: ParseOptions
 ): Parsed => {
-  const reg = /(^|;|\*\/)\s*import\s*((?:.|\r|\n)+?(?:"|'))(?=;|$)|\b(import)(?=\s*\()/gm;
+  const reg = /(^|;|\*\/)?\s*(import)\s*\(|(^|;|\*\/)\s*import\s*((?:.|\r|\n)+?(?:"|'))(?=;|$)/gm;
 
   let hadImports = false;
 
   const deps: string[] = [];
 
-  const content = script.replace(reg, (_, prefix, match, dynamic) => {
+  const content = script.replace(reg, (_, dPrefix, dynamic, prefix, match) => {
     if (!dynamic) {
       hadImports = true;
 
@@ -68,7 +68,14 @@ export const parseScript = (
 
       return `${prefix}${transformDep(cur)}`;
     } else {
-      return `(function(id){return Legume(id).then(${importStar})})`;
+      /*
+       * I hate it too, but otherwise:
+       * func()
+       * import("xxx")
+       * would turn into
+       * func()(function(){...})("xxx")
+       */
+      return `${dPrefix}Array(function(id){return Legume(id).then(${importStar})})[0](`;
     }
   });
 
