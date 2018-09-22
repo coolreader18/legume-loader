@@ -1,7 +1,5 @@
-import a from "./dir/thing.js";
-import xX_qUeRy_Xx from "npm:jquery";
-import otherModule from "other-module.js";
-import monster from "npm:js-cookie";
+import { test } from "./testing.js";
+
 import "github:mrkelly/lato@0.3.0/css/lato.min.css";
 import "style.css";
 //aaa import replaceCharacter from "gist:9d372c8604fb918a19e7d9647c863cb1/Replace-character.js";
@@ -18,16 +16,25 @@ console.log(
 //   })
 // );
 
-console.log(
-  'jquery plugin/caching and directory-relative test, should return "hey":',
-  xX_qUeRy_Xx("body")
+import $ from "npm:jquery";
+import "./dir/thing.js";
+test(
+  "jquery plugin/caching and directory-relative imports",
+  $("body")
     .html("<h1>hey</h1>")
-    .legumetest()
+    .legumetest() === "<h1>hey</h1>"
 );
-monster.set("foo", "bar");
-console.log('a modules test, should return "bar":', monster.get("foo"));
-console.log('module.exports test, should return "baz":', otherModule);
 
-import("./dir/dynamic.js").then(() => {
-  console.log("dynamic import test, should appear second");
+import monster from "npm:js-cookie";
+monster.set("foo", "bar");
+test("modules with browser apis", monster.get("foo") === "bar");
+
+import otherModule from "other-module.js";
+test("exports", otherModule === "baz");
+
+import("./dir/dynamic.js").then(({ a }) => {
+  test("dynamic imports", a === "loaded dynamically");
 });
+
+import "npm:jquery-ui-dist/jquery-ui.js";
+test("amd modules and exports mutation", "draggable" in $.fn);

@@ -1,1 +1,1 @@
-console.log("dynamic import test, should appear first");
+exports.a = "loaded dynamically";
