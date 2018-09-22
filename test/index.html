@@ -1,8 +1,9 @@
 <script src=legume.js data-legume-entry=script.js></script>
 <script type=text/legume> // <!-- prettier-ignore -->
-  console.log(
-    'inline script test, should return the require function from "legume:inline-script-0"',
-    require
+  import { test } from "./testing.js";
+  test(
+    "inline script",
+    new Error().stack.split("\n")[1].match("legume:inline-script-0")
   );
 </script>
 <div class=valign-wrapper>hi</div>
