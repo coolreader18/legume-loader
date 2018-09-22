@@ -43,7 +43,7 @@ export const parseScript = (
 
   const deps: string[] = [];
 
-  const content = script.replace(reg, (_, dPrefix, dynamic, prefix, match) => {
+  const content = script.replace(reg, (_, dyPrefix, dynamic, prefix, match) => {
     if (!dynamic) {
       hadImports = true;
 
@@ -75,7 +75,7 @@ export const parseScript = (
        * would turn into
        * func()(function(){...})("xxx")
        */
-      return `${dPrefix}Array(function(id){return Legume(id).then(${importStar})})[0](`;
+      return `${dyPrefix}Array(function(id){return Legume(id).then(${importStar})})[0](`;
     }
   });
 
@@ -147,7 +147,7 @@ const parseNamed = (str: string): [NamedImport[], string] => {
 
 const parseEnd = (str: string): string => {
   const srcMatch = str.match(
-    /(?:from)?\s*("(?:[^\r\n"]|\\")*"|'(?:[^\r\n']|\\')*")/
+    /(?:from)?\s*("(?:[^\r\n"]|\\"|\\\r?\n)*"|'(?:[^\r\n']|\\'|\\\r?\n)*')/
   );
   if (!srcMatch) throw new Error("Invalid end of import statement");
   return parseString(srcMatch[1]);

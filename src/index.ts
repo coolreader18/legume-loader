@@ -91,7 +91,23 @@ namespace Legume {
     deps: string[];
     type: MediaType;
     id: string;
-    exports?: any;
+    hasExports() {
+      return hasOwnProp(this, "cjsExports") || hasOwnProp(this, "amdExports");
+    }
+    get exports() {
+      if (hasOwnProp(this, "amdExports")) {
+        return this.amdExports;
+      }
+      if (hasOwnProp(this, "cjsExports")) {
+        return this.cjsExports;
+      }
+      return this.setDefaultExports();
+    }
+    set exports(exports: any) {
+      this.cjsExports = exports;
+    }
+    cjsExports?: any;
+    amdExports?: any;
     setDefaultExports() {
       let exports: any = undefined;
       switch (this.type) {
@@ -100,10 +116,17 @@ namespace Legume {
           if (this.hadImports) exports.__esModule = true;
           break;
       }
-      return (this.exports = exports);
+      return (this.cjsExports = exports);
     }
     hadImports: boolean;
     loads: number = 0;
+    define(...args: any[]) {
+      const amdMod = amd.args(...args);
+      amd.run(amdMod);
+      if (hasOwnProp(amdMod, "exports")) {
+        this.amdExports = amdMod.exports;
+      }
+    }
     getCJSModule(): CommonJSModule {
       const self = this;
       return {
@@ -139,10 +162,9 @@ namespace Legume {
   };
   export const require = (modId: string): any => {
     const mod = getMod(modId);
-    if (hasOwnProp(mod, "exports")) {
+    if (mod.hasExports()) {
       return mod.exports;
     }
-    mod.setDefaultExports();
     return Legume.run(modId);
   };
   export function run(modId: string) {
@@ -156,12 +178,14 @@ namespace Legume {
       case "script":
         const code = `${mod.content}\n//# sourceURL=${sourceURL}`;
         const cjsMod = mod.getCJSModule();
+        const def = mod.define.bind(mod);
+        def.amd = define.amd;
         const passedArgs = {
           module: cjsMod,
           exports: cjsMod.exports,
           require: cjsMod.require,
           Legume,
-          define
+          define: def
         };
         const modFunc = Function.apply(
           undefined,
@@ -185,113 +209,114 @@ namespace Legume {
     }
   }
 
-  interface AmdModule {
-    factory: Function;
-    deps?: string[];
-    id?: string;
-    exports?: any;
-  }
-  export const amdCache: { [k: string]: AmdModule } = {};
-  export const amdPending: { [k: string]: AmdModule[] } = {};
+  namespace amd {
+    interface Module {
+      factory: Function;
+      deps?: string[];
+      id?: string;
+      exports?: any;
+    }
+    export const cache: { [k: string]: Module } = {};
+    export const pending: { [k: string]: Module[] } = {};
 
-  export function define(config: { [key: string]: any }): void;
-  export function define(func: () => any): void;
-  export function define(deps: string[], ready: Function): void;
-  export function define(name: string, deps: string[], ready: Function): void;
-  export function define(name: string, ready: Function): void;
-  export function define(...args) {
-    let [arg0, arg1] = args;
-    let id: string | undefined;
-    let deps: string[] | undefined = [];
-    let factory!: Function;
+    export function args(...args: any[]): Module {
+      let [arg0, arg1] = args;
+      let id: string | undefined;
+      let deps: string[] | undefined = [];
+      let factory!: Function;
 
-    const factoryArg = (arg: any) => {
-      if (typeof arg === "object") {
-        factory = () => arg;
-      } else if (typeof arg === "function") {
-        factory = arg;
-      } else {
-        throw new Error("Invalid define arguments");
-      }
-    };
-
-    switch (args.length) {
-      case 0:
-        throw new Error("No args provided to define");
-      case 1:
-        factoryArg(arg0);
-        break;
-      case 2:
-        if (Array.isArray(arg0)) {
-          deps = arg0;
-        } else if (typeof arg0 === "string") {
-          id = arg0;
+      const factoryArg = (arg: any) => {
+        if (typeof arg === "object") {
+          factory = () => arg;
+        } else if (typeof arg === "function") {
+          factory = arg;
         } else {
           throw new Error("Invalid define arguments");
-        }
-
-        factoryArg(arg1);
-        break;
-      default:
-        if (typeof arg0 !== "string" || !Array.isArray(arg1)) {
-          throw new Error("Invalid define arguments");
-        }
-        id = arg0;
-        deps = arg1;
-        factoryArg(args[2]);
-    }
-
-    runAmd({ factory, deps, id });
-  }
-
-  function runAmd(mod: AmdModule) {
-    const deps = mod.deps || [];
-    let isPending = deps.reduce((isPending, depId) => {
-      if (!hasOwnProp(amdCache, depId)) {
-        isPending = true;
-        if (amdPending[depId]) {
-          amdPending[depId].push(mod);
-        } else {
-          amdPending[depId] = [mod];
-        }
-      }
-      return isPending;
-    }, false);
-
-    if (!isPending) {
-      const res = mod.factory(...deps.map(depId => getAmdDep(depId, mod)));
-      if (res) mod.exports = res;
-      if (mod.id) {
-        amdCache[mod.id] = mod;
-        if (amdPending[mod.id]) {
-          amdPending[mod.id].forEach(runAmd);
-          delete amdPending[mod.id];
-        }
-      }
-    }
-  }
-
-  function getAmdDep(depId: string, mod: AmdModule) {
-    if (depId === "exports") {
-      return (mod.exports = {});
-    } else if (depId === "require") {
-      return modId => getAmdDep(modId, mod);
-    } else if (depId === "module") {
-      return {
-        require: modId => getAmdDep(modId, mod),
-        get exports() {
-          return mod.exports;
-        },
-        set exports(exports) {
-          mod.exports = exports;
-        },
-        legume: {
-          loads: 0
         }
       };
-    } else {
-      return Legume.amdCache[depId].exports;
+
+      switch (args.length) {
+        case 0:
+          throw new Error("No args provided to define");
+        case 1:
+          factoryArg(arg0);
+          break;
+        case 2:
+          if (Array.isArray(arg0)) {
+            deps = arg0;
+          } else if (typeof arg0 === "string") {
+            id = arg0;
+          } else {
+            throw new Error("Invalid define arguments");
+          }
+
+          factoryArg(arg1);
+          break;
+        default:
+          if (typeof arg0 !== "string" || !Array.isArray(arg1)) {
+            throw new Error("Invalid define arguments");
+          }
+          id = arg0;
+          deps = arg1;
+          factoryArg(args[2]);
+      }
+
+      return { factory, deps, id };
     }
+
+    export function run(mod: Module) {
+      const deps = mod.deps || [];
+      let isPending = deps.reduce((isPending, depId) => {
+        if (!hasOwnProp(cache, depId)) {
+          isPending = true;
+          if (pending[depId]) {
+            pending[depId].push(mod);
+          } else {
+            pending[depId] = [mod];
+          }
+        }
+        return isPending;
+      }, false);
+
+      if (!isPending) {
+        const res = mod.factory(...deps.map(depId => getDep(depId, mod)));
+        if (res) mod.exports = res;
+        if (mod.id) {
+          cache[mod.id] = mod;
+          if (pending[mod.id]) {
+            pending[mod.id].forEach(run);
+            delete pending[mod.id];
+          }
+        }
+      }
+    }
+
+    export function getDep(depId: string, mod: Module) {
+      if (depId === "exports") {
+        return (mod.exports = {});
+      } else if (depId === "require") {
+        return modId => getDep(modId, mod);
+      } else if (depId === "module") {
+        return {
+          require: modId => getDep(modId, mod),
+          get exports() {
+            return mod.exports;
+          },
+          set exports(exports) {
+            mod.exports = exports;
+          },
+          legume: {
+            loads: 0
+          }
+        };
+      } else {
+        return cache[depId].exports;
+      }
+    }
+  }
+
+  export function define(...args: any[]) {
+    amd.run(amd.args(...args));
   }
 
   export namespace define {

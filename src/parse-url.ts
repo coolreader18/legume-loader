@@ -33,9 +33,9 @@ const parseUrl = (inUrl: string, ref?: string | URL | LegumeUrl): LegumeUrl => {
     case "gist":
       const split = origUrl.pathname.split("/");
       absUrl = new URL(
-        `https://cdn.rawgit.com/${split.slice(0, 2)}/raw/${origUrl.hash}${
-          split[2]
-        }`
+        `https://cdn.rawgit.com/${split
+          .slice(0, 2)
+          .join("/")}/raw/${origUrl.hash.slice(1)}/${split[2]}`
       );
       break;
     default:
