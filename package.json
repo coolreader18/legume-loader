@@ -1,6 +1,6 @@
 {
   "name": "legume-loader",
-  "version": "0.2.7",
+  "version": "1.0.0-0",
   "author": "coolreader18",
   "repository": "github:coolreader18/legume-loader",
   "main": "legume.js",
