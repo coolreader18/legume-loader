@@ -1,6 +1,6 @@
 # Legume Loader
 
-An easy way to manage dependencies in vanilla JS. No bundler, no browserify, just JavaScript comments.
+An easy way to manage dependencies in vanilla JS. No bundler, just `import` statements.
 
 ## Usage
 
@@ -9,19 +9,17 @@ index.html:
 ```html
 <html>
   <head>
-    <script
-    src=https://cdn.jsdelivr.net/npm/legume-loader@0.2.4/legume.min.js
-    data-legume-entry=script.js></script>
+    <script src=https://cdn.jsdelivr.net/npm/legume-loader@0.2.4/legume.min.js data-legume-entry=script.js></script>
   </head>
   <body>
-    <div id=mydiv />
+    <div id=mydiv></div>
   </body>
 </html>
 ```
 
 script.js:
 
-```javascript
+```js
 import $ from "npm:jquery";
 $("#mydiv").text("Now I can use jQuery!");
 ```
@@ -36,6 +34,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- This is based off of, in concept and some code, a previous project of mine, [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
-- Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet). Legume uses very little code from there, I think at this point just the code for iterating throught the lines of a script, but the project was inspired by it.
-- Some code taken from [lukechilds/when-dom-ready](https://github.com/lukechilds/when-dom-ready).
+- This is based off of, in concept, a previous project of mine,
+  [bookmarklet-loader](https://github.com/coolreader18/bookmarklet-loader).
+- Which in turn used a lot of code from [mrcoles/bookmarklet](https://github.com/mrcoles/bookmarklet).
+  Legume uses no code from either project, but was inspired by it.
+- Some code taken from [lukechilds/when-dom-ready](https://github.com/lukechilds/when-dom-ready),
+  which is under the MIT license.
