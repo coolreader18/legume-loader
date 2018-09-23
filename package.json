@@ -3,20 +3,25 @@
   "version": "1.0.0-0",
   "author": "coolreader18",
   "repository": "github:coolreader18/legume-loader",
-  "main": "legume.js",
-  "jsdelivr": "legume.min.js",
+  "main": "build/legume.js",
   "description": "🥜 A simple vanilla JS dependency manager.",
   "bugs": "https://github.com/coolreader18/legume-loader/issues",
   "license": "MIT",
   "bin": "build/cli.js",
   "scripts": {
     "build": "rollup -c",
-    "watch": "rollup -cw"
+    "watch": "rollup -cw",
+    "test": "node test.js | tap-spec",
+    "test-raw": "node test.js"
   },
   "devDependencies": {
+    "mocha": "^5.2.0",
+    "puppeteer": "^1.8.0",
     "rollup": "^0.58.2",
     "rollup-plugin-typescript2": "^0.16.1",
     "rollup-plugin-uglify": "^3.0.0",
+    "serve-handler": "^5.0.2",
+    "tap-spec": "^5.0.0",
     "typescript": "^3.0.3"
   },
   "dependencies": {

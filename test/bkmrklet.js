@@ -1,3 +1,5 @@
-import { test } from "./testing.js";
+// import { test } from "./testing.js";
 
-test("no exports but side effects", true);
+// test("no exports but side effects", t => {
+//   t.pass();
+// });

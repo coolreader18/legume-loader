@@ -336,8 +336,8 @@ namespace Legume {
     const contentType = res.headers.get("Content-Type") || "unknown";
     const content = await res.text();
 
-    let type: MediaType;
-    switch (contentType.split(";")[0]) {
+    let type!: MediaType;
+    type: switch (contentType.split(";")[0]) {
       case "application/json":
         type = "json";
         break;
@@ -353,17 +353,17 @@ namespace Legume {
           switch (match[1]) {
             case "js":
               this.type = "script";
-              break;
+              break type;
             case "css":
               this.type = "style";
-              break;
+              break type;
             case "json":
               this.type = "json";
-              break;
+              break type;
             case "txt":
             case "text":
               this.type = "text";
-              break;
+              break type;
           }
         console.warn(`Media type could not be determined for ${url.absUrl}`);
         type = "unknown";
@@ -378,8 +378,8 @@ const curScript = document.currentScript;
 const entry = curScript && curScript.getAttribute("data-legume-entry");
 
 whenDOMReady().then(() => {
-  Array.from(document.querySelectorAll("script[type='text/legume']")).reduce(
-    (prom, cur, i) => {
+  Array.from(document.querySelectorAll("script[type='text/legume']"))
+    .reduce((prom, cur, i) => {
       const processfn = async () => {
         const id = `inline-script-${i}`;
         await Legume.load(cur.textContent || "", {
@@ -396,9 +396,13 @@ whenDOMReady().then(() => {
       }
 
       return prom;
-    },
-    entry ? Legume(entry).catch(console.error) : Promise.resolve()
-  );
+    }, entry ? Legume(entry).catch(console.error) : Promise.resolve())
+    .then(() => {
+      if (typeof onLegumeDone === "function") {
+        onLegumeDone();
+      }
+    });
 });
+declare const onLegumeDone: (() => void) | undefined;
 
 export default Legume;

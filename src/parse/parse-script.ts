@@ -75,7 +75,8 @@ export const parseScript = (
        * would turn into
        * func()(function(){...})("xxx")
        */
-      return `${dyPrefix}Array(function(id){return Legume(id).then(${importStar})})[0](`;
+      return ` ${dyPrefix ||
+        ""}Array(function(id){return Legume(id).then(${importStar})})[0](`;
     }
   });
 

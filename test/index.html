@@ -1,9 +1,46 @@
-<script src=legume.js data-legume-entry=script.js></script>
-<script type=text/legume> // <!-- prettier-ignore -->
-  import { test } from "./testing.js";
-  test(
-    "inline script",
-    new Error().stack.split("\n")[1].match("legume:inline-script-0")
-  );
-</script>
-<div class=valign-wrapper>hi</div>
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Mocha</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="mocha/mocha.css" />
+  <style>
+    #css-test {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id=css-test>hi</div>
+  <div id="mocha"></div>
+  <script src="mocha/mocha.js"></script>
+  <script>mocha.setup('bdd');</script>
+  <script src=legume.js data-legume-entry=tests.js></script>
+  <script type=text/legume> // <!-- prettier-ignore -->
+    import { assert } from "npm:chai/chai.js";
+    describe("inline script", () => {
+      it("should give the correct sourceUrl", () => {
+        assert(new Error().stack.split("\n")[1].match("legume:inline-script-0"));
+      });
+    });
+  </script>
+  <script>
+    onLegumeDone = () => {
+      const runner = mocha.reporter(class {
+        constructor(runner) {
+          new Mocha.reporters.html(runner);
+          new Mocha.reporters.TAP(runner);
+
+          runner.on("end", () => {
+            if (typeof onDone === "function") onDone()
+          })
+        }
+      }).run();
+    }
+  </script>
+</body>
+
+</html>
