@@ -17,9 +17,9 @@
   "devDependencies": {
     "mocha": "^5.2.0",
     "puppeteer": "^1.8.0",
-    "rollup": "^0.58.2",
-    "rollup-plugin-typescript2": "^0.16.1",
-    "rollup-plugin-uglify": "^3.0.0",
+    "rollup": "^0.66.2",
+    "rollup-plugin-terser": "^3.0.0",
+    "rollup-plugin-typescript2": "^0.17.0",
     "serve-handler": "^5.0.2",
     "tap-spec": "^5.0.0",
     "typescript": "^3.0.3"

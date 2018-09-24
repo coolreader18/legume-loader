@@ -1,19 +1,20 @@
 import typescript from "rollup-plugin-typescript2";
-import uglify from "rollup-plugin-uglify";
+import { terser } from "rollup-plugin-terser";
 
 const config = (suffix = "", ...plugins) => ({
   input: "src/index.ts",
   output: {
     format: "iife",
     name: "Legume",
-    file: `build/legume${suffix}.js`
+    file: `build/legume${suffix}.js`,
+    sourcemap: true
   },
   plugins: [...plugins, typescript()]
 });
 
 export default [
   config(),
-  config(".min", uglify())
+  config(".min", terser({ mangle: true, sourcemap: true }))
   // ,{
   //   input: "src/cli.js",
   //   output: {
