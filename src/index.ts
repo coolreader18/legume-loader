@@ -331,43 +331,40 @@ namespace Legume {
     type: MediaType;
     content: string;
   }
+  const contentTypeToType: { [k: string]: MediaType } = {
+    "application/json": "json",
+    "application/javascript": "script",
+    "text/css": "style",
+    "text/html": "html"
+  };
+  const extToType: { [k: string]: MediaType } = {
+    js: "script",
+    css: "style",
+    json: "json",
+    txt: "text",
+    text: "text"
+  };
   export async function fetch(url: LegumeUrl): Promise<FetchResult> {
     const res = await window.fetch(url.absUrl.href);
-    const contentType = res.headers.get("Content-Type") || "unknown";
+    let contentType = res.headers.get("Content-Type");
     const content = await res.text();
 
     let type!: MediaType;
-    type: switch (contentType.split(";")[0]) {
-      case "application/json":
-        type = "json";
-        break;
-      case "application/javascript":
-        type = "script";
-        break;
-      case "text/css":
-        type = "style";
-        break;
-      default:
+    determineType: {
+      if (contentType) {
+        contentType = contentType.split(";")[0];
+        if (hasOwnProp(contentTypeToType, contentType)) {
+          type = contentTypeToType[contentType];
+          break determineType;
+        }
+      }
         const match = url.request.pathname.match(/\.(.*)$/);
-        if (match)
-          switch (match[1]) {
-            case "js":
-              this.type = "script";
-              break type;
-            case "css":
-              this.type = "style";
-              break type;
-            case "json":
-              this.type = "json";
-              break type;
-            case "txt":
-            case "text":
-              this.type = "text";
-              break type;
+      if (match && hasOwnProp(extToType, match[1])) {
+        type = extToType[match[1]];
+        break determineType;
           }
         console.warn(`Media type could not be determined for ${url.absUrl}`);
         type = "unknown";
-        break;
     }
 
     return { content, type };

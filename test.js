@@ -1,16 +1,10 @@
 const puppeteer = require("puppeteer");
 const util = require("util");
-const http = require("http");
-const serve = require("serve-handler");
 
 (async () => {
-  const port = 8345;
+  const port = process.env.PORT || (process.env.PORT = 8345);
 
-  const server = http
-    .createServer((request, response) =>
-      serve(request, response, { public: __dirname + "/test" })
-    )
-    .listen(port);
+  const server = require("./server");
 
   const browser = await puppeteer.launch();
   const [page] = await browser.pages();

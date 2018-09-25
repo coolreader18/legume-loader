@@ -12,7 +12,8 @@
     "build": "rollup -c",
     "watch": "rollup -cw",
     "test": "node test.js | tap-spec",
-    "test-raw": "node test.js"
+    "test-raw": "node test.js",
+    "serve": "node server.js"
   },
   "devDependencies": {
     "mocha": "^5.2.0",
