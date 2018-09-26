@@ -68,7 +68,7 @@ namespace Legume {
         dom
           .querySelectorAll("link[rel=stylesheet]")
           .forEach((link: HTMLLinkElement) => {
-            link.href = parseUrl(link.href, url).absUrl.href;
+            link.href = parseUrl(link.getAttribute("href")!, url).absUrl.href;
           });
         importsResult.content = dom.documentElement.outerHTML;
         break;
