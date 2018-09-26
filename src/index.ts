@@ -37,22 +37,15 @@ async function Legume(input: string, { urlRef, run = null }: LegumeOpts = {}) {
 namespace Legume {
   export const version = "dev";
 
-  export interface ModuleInput {
-    url?: LegumeUrl;
-    content: string;
-    deps: string[];
-    type: MediaType;
-    id: string;
-    hadImports: boolean;
-  }
   export const cache: { [id: string]: Module } = {};
 
   interface LoadOpts {
     id: string;
     type: MediaType;
     url?: LegumeUrl;
+    win?: Window;
   }
-  export async function load(input: string, { id, url, type }: LoadOpts) {
+  export async function load(input: string, { id, url, type, win }: LoadOpts) {
     let importsResult: parse.Parsed = {
       content: input,
       deps: [],
@@ -69,18 +62,38 @@ namespace Legume {
           mapId: modId => parseUrl(modId, url).absUrl.href
         });
         break;
+      case "html":
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(input, "text/html");
+        dom
+          .querySelectorAll("link[rel=stylesheet]")
+          .forEach((link: HTMLLinkElement) => {
+            link.href = parseUrl(link.href, url).absUrl.href;
+          });
+        importsResult.content = dom.documentElement.outerHTML;
+        break;
     }
     const mod = new Module({
       ...importsResult,
       type,
       id,
-      url
+      url,
+      win: win || window
     });
     Legume.cache[id] = mod;
     if (mod.deps)
       await Promise.all(
         mod.deps.map(dep => Legume(dep, { urlRef: url, run: false }))
       );
+  }
+  export interface ModuleInput {
+    url?: LegumeUrl;
+    content: string;
+    deps: string[];
+    type: MediaType;
+    id: string;
+    hadImports: boolean;
+    win: Window;
   }
   export class Module implements ModuleInput {
     constructor(mod: ModuleInput) {
@@ -91,6 +104,7 @@ namespace Legume {
     deps: string[];
     type: MediaType;
     id: string;
+    win: Window;
     hasExports() {
       return hasOwnProp(this, "cjsExports") || hasOwnProp(this, "amdExports");
     }
@@ -112,8 +126,14 @@ namespace Legume {
       let exports: any = undefined;
       switch (this.type) {
         case "script":
+        case "html":
           exports = {};
-          if (this.hadImports) exports.__esModule = true;
+          if (this.type === "html" || this.hadImports) {
+            Object.defineProperty(exports, "__esModule", {
+              enumerable: false,
+              value: true
+            });
+          }
           break;
       }
       return (this.cjsExports = exports);
@@ -160,13 +180,13 @@ namespace Legume {
     }
     return Legume.cache[modId];
   };
-  export const require = (modId: string): any => {
+  export function require(modId: string): any {
     const mod = getMod(modId);
     if (mod.hasExports()) {
       return mod.exports;
     }
     return Legume.run(modId);
-  };
+  }
   export function run(modId: string) {
     const mod = getMod(modId);
 
@@ -187,7 +207,8 @@ namespace Legume {
           Legume,
           define: def
         };
-        const modFunc = Function.apply(
+        // @ts-ignore
+        const modFunc = mod.win.Function.apply(
           undefined,
           Object.keys(passedArgs).concat(code)
         );
@@ -205,11 +226,47 @@ namespace Legume {
         } else {
           document.head.appendChild(elem);
         }
+        mod.exports = elem;
         return elem;
+      case "html":
+        const exports = mod.setDefaultExports();
+        interface OpenWindowOpts {
+          height?: number;
+          width?: number;
+        }
+        const openWindowBase = (
+          opts: OpenWindowOpts = {}
+        ): [Window, Promise<void>] | null => {
+          let optsString = "";
+          if (opts.height) optsString += `height=${opts.height},`;
+          if (opts.width) optsString += `width=${opts.width},`;
+          const win = window.open("", mod.id, optsString.slice(0, -1));
+          if (!win) return null;
+          win.document.documentElement.innerHTML = mod.content;
+          // @ts-ignore
+          win.Legume = Legume;
+          const initProm = init({
+            doc: win.document,
+            url: mod.url && mod.url.absUrl.href,
+            win
+          });
+          return [win, initProm];
+        };
+        const openWindow = (opts?: OpenWindowOpts): Window | null => {
+          const res = openWindowBase(opts);
+          return res && res[0];
+        };
+        exports["default"] = openWindow;
+        exports.openWindowAsync = (opts): Promise<Window> => {
+          const res = openWindowBase(opts);
+          if (!res) return Promise.reject(res);
+          return res[1].then(() => res[0]);
+        };
+        return exports;
     }
   }
 
-  namespace amd {
+  export namespace amd {
     interface Module {
       factory: Function;
       deps?: string[];
@@ -326,7 +383,7 @@ namespace Legume {
   export import parseScript = parse.parseScript;
   export import parseStyle = parse.parseStyle;
 
-  type MediaType = "script" | "style" | "json" | "text" | "unknown";
+  type MediaType = "script" | "style" | "json" | "text" | "html" | "unknown";
   interface FetchResult {
     type: MediaType;
     content: string;
@@ -342,7 +399,9 @@ namespace Legume {
     css: "style",
     json: "json",
     txt: "text",
-    text: "text"
+    text: "text",
+    html: "html",
+    htm: "html"
   };
   export async function fetch(url: LegumeUrl): Promise<FetchResult> {
     const res = await window.fetch(url.absUrl.href);
@@ -358,48 +417,65 @@ namespace Legume {
           break determineType;
         }
       }
-        const match = url.request.pathname.match(/\.(.*)$/);
+      const match = url.request.pathname.match(/\.(.*)$/);
       if (match && hasOwnProp(extToType, match[1])) {
         type = extToType[match[1]];
         break determineType;
-          }
-        console.warn(`Media type could not be determined for ${url.absUrl}`);
-        type = "unknown";
+      }
+      console.warn(`Media type could not be determined for ${url.absUrl}`);
+      type = "unknown";
     }
 
     return { content, type };
   }
-}
 
-const curScript = document.currentScript;
-const entry = curScript && curScript.getAttribute("data-legume-entry");
-
-whenDOMReady().then(() => {
-  Array.from(document.querySelectorAll("script[type='text/legume']"))
-    .reduce((prom, cur, i) => {
+  export async function init({
+    doc,
+    entry,
+    url,
+    win
+  }: {
+    doc: Document;
+    entry?: string | null;
+    url?: string;
+    win?: Window;
+  }) {
+    await whenDOMReady(doc);
+    const scripts = Array.from(
+      doc.querySelectorAll("script[type='text/legume']")
+    );
+    if (entry) await Legume(entry, { urlRef: url });
+    for (const [script, i] of scripts.map(
+      (cur, i): [Element, number] => [cur, i]
+    )) {
       const processfn = async () => {
         const id = `inline-script-${i}`;
-        await Legume.load(cur.textContent || "", {
+        // TODO: Figure out some way to show that it's an inline script and the document url
+        await Legume.load(script.textContent || "", {
           id,
-          type: "script"
+          type: "script",
+          url: typeof url === "string" ? parseUrl(url) : undefined,
+          win
         });
         Legume.run(id);
       };
 
-      if (cur.getAttribute("async") === null) {
-        processfn();
-      } else {
-        prom = prom.then(processfn).then(console.error);
+      const prom = processfn().catch(console.error);
+      if (script.getAttribute("async") === null) {
+        await prom;
       }
+    }
+  }
+}
 
-      return prom;
-    }, entry ? Legume(entry).catch(console.error) : Promise.resolve())
-    .then(() => {
-      if (typeof onLegumeDone === "function") {
-        onLegumeDone();
-      }
-    });
-});
 declare const onLegumeDone: (() => void) | undefined;
+
+const curScript = document.currentScript;
+const entry = curScript && curScript.getAttribute("data-legume-entry");
+Legume.init({ doc: document, entry }).then(() => {
+  if (typeof onLegumeDone === "function") {
+    onLegumeDone();
+  }
+});
 
 export default Legume;

@@ -1,10 +1,10 @@
 const loadedStates = ["interactive", "complete"];
-const whenDOMReady = () =>
+const whenDOMReady = (doc: Document) =>
   new Promise(function(resolve) {
-    if (loadedStates.indexOf(document.readyState) !== -1) {
+    if (loadedStates.indexOf(doc.readyState) !== -1) {
       resolve();
     } else {
-      document.addEventListener("DOMContentLoaded", () => {
+      doc.addEventListener("DOMContentLoaded", () => {
         resolve();
       });
     }

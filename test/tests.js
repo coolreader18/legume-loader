@@ -72,3 +72,24 @@ describe("amd modules and exports mutation", () => {
     assert("draggable" in $.fn);
   });
 });
+
+import { openWindowAsync } from "./win.html";
+describe("html imports and windows", () => {
+  let win;
+  before("open the window", async () => {
+    win = await openWindowAsync({ height: 100, width: 100 });
+    assert(win);
+  });
+  it("should map stylesheet imports", () => {
+    assert.equal(
+      win.getComputedStyle(win.document.querySelector("h1")).color,
+      "rgb(255, 0, 0)"
+    );
+  });
+  it("should have the correct document", () => {
+    assert(win.foundH1);
+  });
+  after("close the window", () => {
+    win.close();
+  });
+});

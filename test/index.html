@@ -17,7 +17,15 @@
   <div id=css-test>hi</div>
   <div id="mocha"></div>
   <script src="mocha/mocha.js"></script>
-  <script>mocha.setup('bdd');</script>
+  <script>
+    mocha.setup({
+      ui: 'bdd',
+      reporter: function (runner) {
+        new Mocha.reporters.html(runner);
+        new Mocha.reporters.TAP(runner);
+      }
+    });
+  </script>
   <script src=legume.js data-legume-entry=tests.js></script>
   <script type=text/legume> // <!-- prettier-ignore -->
     import { assert } from "npm:chai/chai.js";
@@ -29,16 +37,12 @@
   </script>
   <script>
     onLegumeDone = () => {
-      const runner = mocha.reporter(class {
-        constructor(runner) {
-          new Mocha.reporters.html(runner);
-          new Mocha.reporters.TAP(runner);
-
-          runner.on("end", () => {
-            if (typeof onDone === "function") onDone()
-          })
-        }
-      }).run();
+      const runner = mocha.run();
+      if (typeof onDone === "function") {
+        runner.on("end", () => {
+          onDone();
+        })
+      }
     }
   </script>
 </body>
