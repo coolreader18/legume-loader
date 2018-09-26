@@ -21,6 +21,16 @@ async function Legume(
 
 async function Legume(input: string, { urlRef, run = null }: LegumeOpts = {}) {
   const url = parseUrl(input, urlRef);
+  const { href } = url.absUrl;
+  if (hasOwnProp(Legume.cache, href)) {
+    if (run == null) {
+      return Legume.require(href);
+    } else if (run) {
+      return Legume.run(href);
+    } else {
+      return href;
+    }
+  }
   const { content, type } = await Legume.fetch(url);
   const id = url.absUrl.href;
 
