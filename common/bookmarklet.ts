@@ -1,4 +1,4 @@
-export const makeUrl = (legumeVer: string, script: string) =>
+export const makeUrl = (script: string, legumeVer?: string) =>
   `javascript:(function(t,l,d,s,n){\
 typeof Legume==n+""?(\
 s=d.createElement("script"),\

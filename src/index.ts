@@ -9,10 +9,22 @@ const hasOwnProp = <O extends { [k in PropertyKey]: any }, K extends keyof O>(
   Object.prototype.hasOwnProperty.call(obj, key);
 
 interface LegumeOpts<R extends boolean | null | undefined = boolean | null> {
+  /** The url to resolve relative requests from */
   urlRef?: string | URL | LegumeUrl;
+  /**
+   * Whether or not to run the module. If true, always run it. If unset or null,
+   * run it only if the exports aren't already cached. If false, never run it,
+   * and return the url the request resolved to.
+   */
   run?: R;
 }
 
+/**
+ * Load a module.
+ * @param input - The legume url to load.
+ * @param opts - Options for loading.
+ * @returns a promise that resolves to the module's exports or its resolved url.
+ */
 async function Legume(input: string, opts?: LegumeOpts<false>): Promise<string>;
 async function Legume(
   input: string,
@@ -50,11 +62,20 @@ namespace Legume {
   export const cache: { [id: string]: Module } = {};
 
   interface LoadOpts {
+    /** The id of the new module, what it's stored under in `Legume.cache` */
     id: string;
+    /** The media type of the new module */
     type: MediaType;
+    /** The url that the module was fetched from */
     url?: LegumeUrl;
+    /** The window that the module belongs to */
     win?: Window;
   }
+  /**
+   * Load a module from its source text into the cache.
+   * @param input - The source content of the module.
+   * @param opts - Options and fields for loading.
+   */
   export async function load(input: string, { id, url, type, win }: LoadOpts) {
     let importsResult: parse.Parsed = {
       content: input,
@@ -91,10 +112,11 @@ namespace Legume {
       win: win || window
     });
     Legume.cache[id] = mod;
-    if (mod.deps)
+    if (mod.deps) {
       await Promise.all(
         mod.deps.map(dep => Legume(dep, { urlRef: url, run: false }))
       );
+    }
   }
   export interface ModuleInput {
     url?: LegumeUrl;
