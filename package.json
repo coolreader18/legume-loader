@@ -25,11 +25,8 @@
     "tap-spec": "^5.0.0",
     "typescript": "^3.0.3"
   },
-  "dependencies": {
-    "find-npm-prefix": "^1.0.2",
-    "got": "^8.3.0",
-    "semver": "^5.5.0",
-    "when-dom-ready": "^1.2.12",
-    "yargs": "^11.0.0"
-  }
+  "dependencies": {},
+  "files": [
+    "build/"
+  ]
 }
