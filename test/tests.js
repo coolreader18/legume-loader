@@ -64,16 +64,24 @@ describe("amd modules", () => {
   });
 });
 
-import replaceCharacter from "gist:coolreader18/9d372c8604fb918a19e7d9647c863cb1\
-/Replace-character.js#132e839c670867ac3f3e72fcdf9f49f7ebda3be0";
 describe("gist loading", () => {
-  it("should import gists properly", () => {
+  it("should import gists properly", async () => {
+    const replaceCharacter = await Legume(
+      "gist:coolreader18/9d372c8604fb918a19e7d9647c863cb1\
+/Replace-character.js#132e839c670867ac3f3e72fcdf9f49f7ebda3be0"
+    );
     assert.equal(
-      replaceCharacter("hhhhheeeeeellllllllloooo", {
-        h: "foo",
-        l: "bar"
-      }),
-      "foofoofoofoofooeeeeeebarbarbarbarbarbarbarbarbaroooo"
+      replaceCharacter("hhello", { h: "foo", l: "bar" }),
+      "foofooebarbaro"
+    );
+  });
+  it("should work with hashless gists", async () => {
+    const replaceCharacter = await Legume(
+      "gist:coolreader18/9d372c8604fb918a19e7d9647c863cb1/Replace-character.js"
+    );
+    assert.equal(
+      replaceCharacter("hhello", { h: "foo", l: "bar" }),
+      "foofooebarbaro"
     );
   });
 });
