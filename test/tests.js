@@ -94,10 +94,9 @@ describe("html imports and windows", () => {
     assert(win);
   });
   it("should map stylesheet imports", () => {
-    assert.equal(
-      win.getComputedStyle(win.document.querySelector("h1")).color,
-      "rgb(255, 0, 0)"
-    );
+    const link = win.document.querySelector("link");
+    assert(link, "link element exists");
+    assert.equal(link.href, new URL("win.css", location));
   });
   it("should have the correct document", () => {
     assert(win.foundH1);

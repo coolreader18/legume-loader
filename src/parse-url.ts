@@ -35,7 +35,7 @@ const parseUrl = (inUrl: string, ref?: string | URL | LegumeUrl): LegumeUrl => {
       const { hash } = origUrl;
       absUrl = new URL(
         hash
-          ? `https://cdn.rawgit.com/${split
+          ? `https://gistcdn.githack.com/${split
               .slice(0, 2)
               .join("/")}/raw/${hash.slice(1)}/${split[2]}`
           : `https://rawgist.now.sh/${split[1]}/${split[2]}`
