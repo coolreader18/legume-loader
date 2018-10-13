@@ -101,7 +101,7 @@ namespace Legume {
           .forEach((link: HTMLLinkElement) => {
             link.href = parseUrl(link.getAttribute("href")!, url).absUrl.href;
           });
-        importsResult.content = dom.documentElement.outerHTML;
+        importsResult.content = dom.documentElement!.outerHTML;
         break;
     }
     const mod = new Module({
@@ -256,7 +256,7 @@ namespace Legume {
           const prev = mod.exports as HTMLStyleElement;
           prev.parentNode!.replaceChild(elem, prev);
         } else {
-          document.head.appendChild(elem);
+          document.head!.appendChild(elem);
         }
         mod.exports = elem;
         return elem;
@@ -274,14 +274,16 @@ namespace Legume {
           if (opts.width) optsString += `width=${opts.width},`;
           const win = window.open("", mod.id, optsString.slice(0, -1));
           if (!win) return null;
-          win.document.documentElement.innerHTML = mod.content;
+          win.document.documentElement!.innerHTML = mod.content;
           // @ts-ignore
           win.Legume = Legume;
           const initProm = init({
             doc: win.document,
             url: mod.url && mod.url.absUrl.href,
             win
-          });
+          })
+            .then(() => whenDOMReady(win.document))
+            .then(() => {});
           return [win, initProm];
         };
         const openWindow = (opts?: OpenWindowOpts): Window | null => {
